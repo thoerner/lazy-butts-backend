@@ -1,5 +1,6 @@
 import jsonwebtoken from 'jsonwebtoken'
 import { verifyMessage } from 'ethers'
+import { verifySessionAuth } from '../utils/authTools.js'
 import redis from '../services/redisService.js'
 import dotenv from 'dotenv'
 dotenv.config()
@@ -27,7 +28,7 @@ export const verifySignature = async (req, res) => {
         const sessionToken = jsonwebtoken.sign({ address }, process.env.JWT_SECRET, { expiresIn: `${SESSION_EXPIRY_TIME}s` })
         await redis.set(`session:${address}`, sessionToken, 'EX', SESSION_EXPIRY_TIME)
 
-        res.json({ 
+        res.json({
             success: true,
             message: "Signature is valid",
             sessionToken
@@ -40,14 +41,10 @@ export const verifySignature = async (req, res) => {
 export const checkLoggedIn = async (req, res) => {
     const { address, sessionToken } = req.body
 
-    const storedSessionToken = await redis.get(`session:${address}`)
-    if (sessionToken !== storedSessionToken) {
-        res.status(401).json({ message: "Session token is invalid or expired" })
-        return
-    } else {
-        res.json({ 
-            success: true,
-            message: "Session token is valid" 
-        })
+    try {
+        await verifySessionAuth(address, sessionToken)
+        res.json({ success: true, message: "User is logged in" })
+    } catch (err) {
+        res.status(401).json({ message: err })
     }
 }
