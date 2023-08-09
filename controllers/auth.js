@@ -20,7 +20,7 @@ export const verifySignature = async (req, res) => {
         res.status(401).json({ message: "Token is invalid" })
         return
     }
-    const message = `You must sign this message to prove ownership of your wallet address.\nBy signing this message, you agree to [Your App's Name]'s Terms of Service and acknowledge that we use cookies to keep you logged in.\n${token}`
+    const message = `You must sign this message to prove ownership of your wallet address.\nBy signing this message, you agree to Lazy Butt's Terms of Service and acknowledge that we use cookies to keep you logged in.\n${token}`
     const recoveredAddress = verifyMessage(message, signature)
     console.log(recoveredAddress)
     if (recoveredAddress === address) {
