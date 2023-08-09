@@ -13,7 +13,7 @@ const validateSignatureFormat = (signature) => {
 const router = express.Router()
 
 router.get("/token", getToken)
-router.get("/check", [
+router.post("/check", [
     check("address", "Address is invalid").custom(validateAddressFormat),
     check("sessionToken", "Session token is required").not().isEmpty()
 ], checkLoggedIn)
