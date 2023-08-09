@@ -29,7 +29,8 @@ export const verifySignature = async (req, res) => {
 
         res.json({ 
             success: true,
-            message: "Signature is valid" 
+            message: "Signature is valid",
+            sessionToken
         })
     } else {
         res.status(401).json({ message: "Signature is invalid" })
