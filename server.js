@@ -3,6 +3,7 @@ import bodyParser from "body-parser"
 import helmet from "helmet"
 import cors from "cors"
 import lionRoutes from "./routes/lions.js"
+import authRoutes from "./routes/auth.js"
 
 const app = express()
 
@@ -16,6 +17,7 @@ app.get("/", (req, res) => {
 })
 
 app.use("/api/lions", lionRoutes)
+app.use("/api/auth", authRoutes)
 
 app.listen(3000, () => {
     console.log("Server is listening on port 3000")
