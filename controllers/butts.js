@@ -34,8 +34,28 @@ export const getButts = async (req, res) => {
 
     // call contract
     const contract = new Contract(BUTTS_CONTRACT_ADDRESS, LazyButtsAbi, provider)
-    const butts = await contract.walletOfOwner(address)
-    // deconstruct array of BigInts
-    const buttsArray = butts.map((butt) => butt.toString())
+    const buttsBalance = Number(await contract.balanceOf(address))
+    console.log(buttsBalance)
+    if (buttsBalance === 0) {
+        res.status(404).json({ message: "No butts found" })
+        return
+    }
+    const buttsArray = []
+    for (let i = 0; i < 10000; i++) {
+        if (buttsArray.length === buttsBalance) {
+            break
+        }
+        let buttOwner
+        try {
+            buttOwner = await contract.ownerOf(i)
+        } catch (err) {
+            console.log(err)
+            continue
+        }
+        if (buttOwner === address) {
+            buttsArray.push(i)
+        }
+    }
+
     res.json(buttsArray)
 }

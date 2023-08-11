@@ -5,6 +5,7 @@ import cors from "cors"
 import lionRoutes from "./routes/lions.js"
 import authRoutes from "./routes/auth.js"
 import buttRoutes from "./routes/butts.js"
+import "./services/buttService.js"
 
 const app = express()
 
