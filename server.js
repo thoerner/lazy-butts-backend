@@ -5,6 +5,7 @@ import cors from "cors"
 import lionRoutes from "./routes/lions.js"
 import authRoutes from "./routes/auth.js"
 import buttRoutes from "./routes/butts.js"
+import imageRoutes from "./routes/images.js"
 import "./services/buttService.js"
 
 const app = express()
@@ -21,6 +22,7 @@ app.get("/", (req, res) => {
 app.use("/api/lions", lionRoutes)
 app.use("/api/auth", authRoutes)
 app.use("/api/butts", buttRoutes)
+app.use("/api/images", imageRoutes)
 
 app.listen(3000, () => {
     console.log("Server is listening on port 3000")

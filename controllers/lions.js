@@ -8,7 +8,7 @@ const LION_CONTRACT_ADDRESS = process.env.ENV === 'dev' ? process.env.LION_CONTR
 export const getLions = async (req, res) => {
     const errors = validationResult(req)
     if (!errors.isEmpty()) {
-        return res.status(422).json({ errors: errors.array() })
+        return res.status(400).json({ errors: errors.array() })
     }
     const { address } = req.params
     const lionContract = new ethers.Contract(LION_CONTRACT_ADDRESS, LazyLions, ethProvider)

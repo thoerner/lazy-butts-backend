@@ -36,7 +36,7 @@ const transferEvent = (from, to, tokenId) => {
                 }
                 db.send(new PutItemCommand(putParams))
                     .then((data) => {
-                        console.log(data)
+                        // console.log(data)
                     }
                     )
                     .catch((error) => {
@@ -68,7 +68,7 @@ const transferEvent = (from, to, tokenId) => {
                 }
                 db.send(new UpdateItemCommand(params))
                     .then((data) => {
-                        console.log(data)
+                        // console.log(data)
                     }
                     )
                     .catch((error) => {
@@ -109,7 +109,7 @@ const transferEvent = (from, to, tokenId) => {
                 };
                 db.send(new UpdateItemCommand(params2))
                     .then((data) => {
-                        console.log(data);
+                        // console.log(data);
                     })
                     .catch((error) => {
                         console.log(error);
