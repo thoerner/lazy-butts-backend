@@ -20,6 +20,8 @@ export const getButt = async (req, res) => {
 
     const imageNamePrefix = imageName.split('.')[0]
     const buttsArray = await checkButtsOwnership(address)
+    console.log(`buttsArray: ${buttsArray}`)
+    console.log(`imageNamePrefix: ${imageNamePrefix}`)
     if (!buttsArray.includes(imageNamePrefix)) {
         return res.status(401).json({ error: "You don't own this butt" })
     }
