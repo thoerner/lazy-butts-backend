@@ -6,3 +6,5 @@ dotenv.config()
 export const db = new DynamoDBClient({ region: "us-east-1" })
 
 export { ScanCommand, PutItemCommand, GetItemCommand, UpdateItemCommand, DeleteItemCommand }
+
+export default db

@@ -5,12 +5,13 @@ import redis from '../services/redisService.js'
 import dotenv from 'dotenv'
 dotenv.config()
 
-const SESSION_EXPIRY_TIME = 3600; // 1 hour in seconds
+const SESSION_EXPIRY_TIME = 86400 // 24 hours
+const CHALLENGE_EXPIRY_TIME = 300 // 5 minutes
 
 export const getToken = async (req, res) => {
     const { address } = req.query
     const token = jsonwebtoken.sign({ address }, process.env.JWT_SECRET)
-    await redis.set(address, token, 'EX', 300)
+    await redis.set(address, token, 'EX', CHALLENGE_EXPIRY_TIME)
     res.json({ token })
 }
 

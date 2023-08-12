@@ -1,6 +1,6 @@
 import express from "express"
 import { check } from "express-validator"
-import { getButt } from "../controllers/images.js"
+import { getButt, getFullBody } from "../controllers/images.js"
 
 const router = express.Router()
 
@@ -20,10 +20,15 @@ const validateAddressFormat = (address) => {
     return /^0x[a-fA-F0-9]{40}$/.test(address)
 }
 
-router.get("/:imageName", [
+router.get("/butt/:imageName", [
     check("address", "Address is invalid").custom(validateAddressFormat),
     check("sessionToken", "Session token is required").not().isEmpty(),
     check("imageName", "Invalid image format.").custom(validateImageExtension),
 ], getButt)
+router.get("/full/:imageName", [
+    check("address", "Address is invalid").custom(validateAddressFormat),
+    check("sessionToken", "Session token is required").not().isEmpty(),
+    check("imageName", "Invalid image format.").custom(validateImageExtension),
+], getFullBody)
 
 export default router
