@@ -8,9 +8,7 @@ const FULL_BODY_KEY = 'public/images/full-lions/'
 
 export const getButt = async (req, res) => {
     const { imageName } = req.params
-    const { authorization } = req.headers
-
-    const address = getAddressFromSessionToken(authorization)
+    const { authorization, address } = req.headers
 
     try {
         await verifySessionAuth(address, authorization)
@@ -45,12 +43,10 @@ export const getButt = async (req, res) => {
 
 export const getFullBody = async (req, res) => {
     const { imageName } = req.params
-    const { authorization } = req.headers
-
-    const address = getAddressFromSessionToken(authorization)
+    const { authorization, address } = req.headers
 
     try {
-        await verifySessionAuth(address, sessionToken)
+        await verifySessionAuth(address, authorization)
     } catch (error) {
         return res.status(401).json({ error: error })
     }
