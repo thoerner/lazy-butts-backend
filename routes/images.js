@@ -16,18 +16,12 @@ const validateImageExtension = (imageName) => {
     return true;
 };
 
-const validateAddressFormat = (address) => {
-    return /^0x[a-fA-F0-9]{40}$/.test(address)
-}
-
 router.get("/butt/:imageName", [
-    check("address", "Address is invalid").custom(validateAddressFormat),
-    check("sessionToken", "Session token is required").not().isEmpty(),
+    check("authorization", "Authorization header is required").not().isEmpty(),
     check("imageName", "Invalid image format.").custom(validateImageExtension),
 ], getButt)
 router.get("/full/:imageName", [
-    check("address", "Address is invalid").custom(validateAddressFormat),
-    check("sessionToken", "Session token is required").not().isEmpty(),
+    check("authorization", "Authorization header is required").not().isEmpty(),
     check("imageName", "Invalid image format.").custom(validateImageExtension),
 ], getFullBody)
 

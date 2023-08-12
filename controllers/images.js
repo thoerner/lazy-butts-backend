@@ -1,5 +1,5 @@
 
-import { verifySessionAuth } from '../utils/authTools.js'
+import { verifySessionAuth, getAddressFromSessionToken } from '../utils/authTools.js'
 import s3, { GetObjectCommand } from '../services/s3Service.js'
 import { db, GetItemCommand } from "../services/dbService.js"
 
@@ -7,10 +7,13 @@ const BUTT_KEY  = 'public/images/butts/'
 const FULL_BODY_KEY = 'public/images/full-lions/'
 
 export const getButt = async (req, res) => {
-    const { address, sessionToken, imageName } = req.params
+    const { imageName } = req.params
+    const { authorization } = req.headers
+
+    const address = getAddressFromSessionToken(authorization)
 
     try {
-        await verifySessionAuth(address, sessionToken)
+        await verifySessionAuth(address, authorization)
     } catch (error) {
         return res.status(401).json({ error: error })
     }
@@ -39,7 +42,10 @@ export const getButt = async (req, res) => {
 }
 
 export const getFullBody = async (req, res) => {
-    const { address, sessionToken, imageName } = req.params
+    const { imageName } = req.params
+    const { authorization } = req.headers
+
+    const address = getAddressFromSessionToken(authorization)
 
     try {
         await verifySessionAuth(address, sessionToken)
