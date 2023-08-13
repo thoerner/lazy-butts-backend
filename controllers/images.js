@@ -14,17 +14,11 @@ export const getButt = async (req, res) => {
 
     try {
         await verifySessionAuth(address, authorization)
-    } catch (error) {
-        return res.status(401).json({ error: error })
-    }
-
-    try {
         await authorizeButtAccess(address, imageName)
+        getAndReturnImageFromS3(`${BUTT_KEY}${imageName}`, res)
     } catch (error) {
         return res.status(401).json({ error: error })
     }
-
-    getAndReturnImageFromS3(`${BUTT_KEY}${imageName}`)
 }
 
 export const getSmallButt = async (req, res) => {
@@ -33,17 +27,11 @@ export const getSmallButt = async (req, res) => {
 
     try {
         await verifySessionAuth(address, authorization)
-    } catch (error) {
-        return res.status(401).json({ error: error })
-    }
-
-    try {
         await authorizeButtAccess(address, imageName)
+        getAndReturnImageFromS3(`${SMALL_BUTT_KEY}${imageName}`, res)
     } catch (error) {
         return res.status(401).json({ error: error })
     }
-
-    getAndReturnImageFromS3(`${SMALL_BUTT_KEY}${imageName}`)
 }
 
 export const getMediumButt = async (req, res) => {
@@ -52,17 +40,11 @@ export const getMediumButt = async (req, res) => {
 
     try {
         await verifySessionAuth(address, authorization)
-    } catch (error) {
-        return res.status(401).json({ error: error })
-    }
-
-    try {
         await authorizeButtAccess(address, imageName)
+        getAndReturnImageFromS3(`${MEDIUM_BUTT_KEY}${imageName}`, res)
     } catch (error) {
         return res.status(401).json({ error: error })
     }
-
-    getAndReturnImageFromS3(`${MEDIUM_BUTT_KEY}${imageName}`)
 }
 
 export const getFullBody = async (req, res) => {
@@ -71,17 +53,11 @@ export const getFullBody = async (req, res) => {
 
     try {
         await verifySessionAuth(address, authorization)
-    } catch (error) {
-        return res.status(401).json({ error: error })
-    }
-
-    try {
         await authorizeButtAccess(address, imageName)
+        getAndReturnImageFromS3(`${FULL_BODY_KEY}${imageName}`, res)
     } catch (error) {
         return res.status(401).json({ error: error })
     }
-
-    getAndReturnImageFromS3(`${FULL_BODY_KEY}${imageName}`)
 }
 
 async function checkButtsOwnership(address) {
@@ -105,7 +81,7 @@ async function checkButtsOwnership(address) {
     return buttsArray
 }
 
-async function getAndReturnImageFromS3(key) {
+async function getAndReturnImageFromS3(key, res) {  // <-- 'res' added as parameter
     const params = {
         Bucket: 'lazybutts',
         Key: key
