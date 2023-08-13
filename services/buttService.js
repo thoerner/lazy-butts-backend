@@ -123,12 +123,10 @@ const transferEvent = (from, to, tokenId) => {
 
 }
 
-
-// set S3 image ACLs to public-read
-const mintEvent = (tokenId) => {
+function makeS3ObjectPublic(bucket, key) {
     const params = {
-        Bucket: process.env.BUCKET_NAME,
-        Key: `butts/${tokenId}.png`,
+        Bucket: bucket,
+        Key: key,
         ACL: "public-read"
     }
     s3.send(new PutObjectAclCommand(params))
@@ -138,19 +136,19 @@ const mintEvent = (tokenId) => {
         .catch((error) => {
             console.log(error)
         })
+}
 
-    const params2 = {
-        Bucket: process.env.BUCKET_NAME,
-        Key: `small-lazy-butts/${tokenId}.png`,
-        ACL: "public-read"
-    }
-    s3.send(new PutObjectAclCommand(params2))
-        .then((data) => {
-            // console.log(data)
-        })
-        .catch((error) => {
-            console.log(error)
-        })
+// set S3 image ACLs to public-read
+const mintEvent = (to, tokenId) => {
+    console.log(`Minted token ${tokenId} to ${to}`)
+    const bucket = process.env.BUCKET_NAME
+    const mediumButtKey = `public/images/medium-lazy-butts/${tokenId}.png`
+    const smallButtKey = `public/images/small-lazy-butts/${tokenId}.png`
+    const metadataKey = `public/metadata/${tokenId}.json`
+    makeS3ObjectPublic(bucket, mediumButtKey)
+    makeS3ObjectPublic(bucket, smallButtKey)
+    makeS3ObjectPublic(bucket, metadataKey)
+    console.log(`Set ACLs for token ${tokenId}`)
 }
 
 contract.on("Transfer", (from, to, tokenId) => {
@@ -158,5 +156,5 @@ contract.on("Transfer", (from, to, tokenId) => {
 })
 
 contract.on("Mint", (to, tokenId) => {
-    mintEvent(tokenId)
+    mintEvent(to, tokenId)
 })
