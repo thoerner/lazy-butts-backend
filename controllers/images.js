@@ -5,6 +5,8 @@ import { db, GetItemCommand } from "../services/dbService.js"
 
 const BUTT_KEY  = 'public/images/butts/'
 const FULL_BODY_KEY = 'public/images/full-lions/'
+const SMALL_BUTT_KEY = 'public/images/lazy-butts-small/'
+const MEDIUM_BUTT_KEY = 'public/images/lazy-butts-medium/'
 
 export const getButt = async (req, res) => {
     const { imageName } = req.params
@@ -16,29 +18,51 @@ export const getButt = async (req, res) => {
         return res.status(401).json({ error: error })
     }
 
-    const imageNamePrefix = imageName.split('.')[0]
-    const buttsArray = await checkButtsOwnership(address)
-    console.log(`buttsArray: ${buttsArray}`)
-    console.log(`imageNamePrefix: ${imageNamePrefix}`)
-    if (!buttsArray.includes(imageNamePrefix)) {
-        return res.status(401).json({ error: "You don't own this butt" })
+    try {
+        await authorizeButtAccess(address, imageName)
+    } catch (error) {
+        return res.status(401).json({ error: error })
     }
 
-    const params = {
-        Bucket: 'lazybutts',
-        Key: `${BUTT_KEY}${imageName}`
-    }
+    getAndReturnImageFromS3(`${BUTT_KEY}${imageName}`)
+}
 
-    const command = new GetObjectCommand(params)
+export const getSmallButt = async (req, res) => {
+    const { imageName } = req.params
+    const { authorization, address } = req.headers
 
     try {
-        const data = await s3.send(command)
-        res.writeHead(200, { 'Content-Type': data.ContentType })
-        data.Body.pipe(res)  // Piping the data directly to the response
+        await verifySessionAuth(address, authorization)
     } catch (error) {
-        console.log("Caught an error:", error);
-        return res.status(400).json({ error: error })
+        return res.status(401).json({ error: error })
     }
+
+    try {
+        await authorizeButtAccess(address, imageName)
+    } catch (error) {
+        return res.status(401).json({ error: error })
+    }
+
+    getAndReturnImageFromS3(`${SMALL_BUTT_KEY}${imageName}`)
+}
+
+export const getMediumButt = async (req, res) => {
+    const { imageName } = req.params
+    const { authorization, address } = req.headers
+
+    try {
+        await verifySessionAuth(address, authorization)
+    } catch (error) {
+        return res.status(401).json({ error: error })
+    }
+
+    try {
+        await authorizeButtAccess(address, imageName)
+    } catch (error) {
+        return res.status(401).json({ error: error })
+    }
+
+    getAndReturnImageFromS3(`${MEDIUM_BUTT_KEY}${imageName}`)
 }
 
 export const getFullBody = async (req, res) => {
@@ -51,27 +75,13 @@ export const getFullBody = async (req, res) => {
         return res.status(401).json({ error: error })
     }
 
-    const imageNamePrefix = imageName.split('.')[0]
-    const buttsArray = await checkButtsOwnership(address)
-    if (!buttsArray.includes(imageNamePrefix)) {
-        return res.status(401).json({ error: "You don't own this butt" })
-    }
-
-    const params = {
-        Bucket: 'lazybutts',
-        Key: `${FULL_BODY_KEY}${imageName}`
-    }
-
-    const command = new GetObjectCommand(params)
-
     try {
-        const data = await s3.send(command)
-        res.writeHead(200, { 'Content-Type': data.ContentType })
-        data.Body.pipe(res)  // Piping the data directly to the response
+        await authorizeButtAccess(address, imageName)
     } catch (error) {
-        console.log("Caught an error:", error);
-        return res.status(400).json({ error: error })
+        return res.status(401).json({ error: error })
     }
+
+    getAndReturnImageFromS3(`${FULL_BODY_KEY}${imageName}`)
 }
 
 async function checkButtsOwnership(address) {
@@ -93,4 +103,28 @@ async function checkButtsOwnership(address) {
     }
     
     return buttsArray
+}
+
+async function getAndReturnImageFromS3(key) {
+    const params = {
+        Bucket: 'lazybutts',
+        Key: key
+    }
+    const command = new GetObjectCommand(params)
+    try {
+        const data = await s3.send(command)
+        res.writeHead(200, { 'Content-Type': data.ContentType })
+        data.Body.pipe(res)  // Piping the data directly to the response
+    } catch (error) {
+        console.log("Caught an error:", error);
+        return res.status(400).json({ error: error })
+    }
+}
+
+async function authorizeButtAccess(address, imageName) {
+    const imageNamePrefix = imageName.split('.')[0]
+    const buttsArray = await checkButtsOwnership(address)
+    if (!buttsArray.includes(imageNamePrefix)) {
+        throw new Error("You don't own this butt")
+    }
 }
