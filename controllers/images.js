@@ -5,8 +5,8 @@ import { db, GetItemCommand } from "../services/dbService.js"
 
 const BUTT_KEY  = 'public/images/butts/'
 const FULL_BODY_KEY = 'public/images/full-lions/'
-const SMALL_BUTT_KEY = 'public/images/lazy-butts-small/'
-const MEDIUM_BUTT_KEY = 'public/images/lazy-butts-medium/'
+const SMALL_BUTT_KEY = 'public/images/small-lazy-butts/'
+const MEDIUM_BUTT_KEY = 'public/images/medium-lazy-butts/'
 
 export const getButt = async (req, res) => {
     const { imageName } = req.params
