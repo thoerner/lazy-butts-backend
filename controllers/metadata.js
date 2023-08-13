@@ -31,8 +31,11 @@ async function getPublicMetadataFromS3(key, res) {
             const command = new GetObjectCommand(params)
             try {
                 const data = await s3.send(command)
-                res.writeHead(200, { 'Content-Type': data.ContentType })
-                data.Body.pipe(res)  
+                res.writeHead(200, {
+                    'Content-Type': data.ContentType,
+                    'Content-Disposition': 'inline' // This will make it display inline in the browser instead of downloading
+                })
+                data.Body.pipe(res)
             } catch (error) {
                 console.log("Caught an error:", error);
                 return res.status(400).json({ error: error })
