@@ -1,5 +1,6 @@
 import provider from "./ethService.js"
-import { db, GetItemCommand, PutItemCommand, UpdateItemCommand } from "./dbService.js"
+import db, { GetItemCommand, PutItemCommand, UpdateItemCommand } from "./dbService.js"
+import s3, { PutObjectAclCommand } from "./s3Service.js"
 import { Contract, ZeroAddress } from "ethers"
 import LazyButtsAbi from "../contracts/LazyButts.json" assert { type: "json" }
 
@@ -122,6 +123,40 @@ const transferEvent = (from, to, tokenId) => {
 
 }
 
+
+// set S3 image ACLs to public-read
+const mintEvent = (tokenId) => {
+    const params = {
+        Bucket: process.env.BUCKET_NAME,
+        Key: `butts/${tokenId}.png`,
+        ACL: "public-read"
+    }
+    s3.send(new PutObjectAclCommand(params))
+        .then((data) => {
+            // console.log(data)
+        })
+        .catch((error) => {
+            console.log(error)
+        })
+
+    const params2 = {
+        Bucket: process.env.BUCKET_NAME,
+        Key: `small-lazy-butts/${tokenId}.png`,
+        ACL: "public-read"
+    }
+    s3.send(new PutObjectAclCommand(params2))
+        .then((data) => {
+            // console.log(data)
+        })
+        .catch((error) => {
+            console.log(error)
+        })
+}
+
 contract.on("Transfer", (from, to, tokenId) => {
     transferEvent(from, to, tokenId)
+})
+
+contract.on("Mint", (to, tokenId) => {
+    mintEvent(tokenId)
 })
