@@ -27,13 +27,9 @@ router.get("/full/:imageName", [
     check("imageName", "Invalid image format.").custom(validateImageExtension),
 ], getFullBody)
 router.get("/small/:imageName", [
-    check("address", "Address is invalid").isLength({ min: 42, max: 42 }).withMessage("Address is invalid"),
-    check("authorization", "Authorization header is required").not().isEmpty(),
     check("imageName", "Invalid image format.").custom(validateImageExtension),
 ], getSmallButt)
 router.get("/medium/:imageName", [
-    check("address", "Address is invalid").isLength({ min: 42, max: 42 }).withMessage("Address is invalid"),
-    check("authorization", "Authorization header is required").not().isEmpty(),
     check("imageName", "Invalid image format.").custom(validateImageExtension),
 ], getMediumButt)
 

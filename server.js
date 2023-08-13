@@ -6,6 +6,7 @@ import lionRoutes from "./routes/lions.js"
 import authRoutes from "./routes/auth.js"
 import buttRoutes from "./routes/butts.js"
 import imageRoutes from "./routes/images.js"
+import metadataRoutes from "./routes/metadata.js"
 import "./services/buttService.js"
 
 const app = express()
@@ -23,6 +24,7 @@ app.use("/api/lions", lionRoutes)
 app.use("/api/auth", authRoutes)
 app.use("/api/butts", buttRoutes)
 app.use("/api/images", imageRoutes)
+app.use("/api/metadata", metadataRoutes)
 
 app.listen(3000, () => {
     console.log("Server is listening on port 3000")

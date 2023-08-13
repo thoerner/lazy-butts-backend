@@ -1,7 +1,7 @@
 
-import { verifySessionAuth, getAddressFromSessionToken } from '../utils/authTools.js'
-import s3, { GetObjectCommand } from '../services/s3Service.js'
-import { db, GetItemCommand } from "../services/dbService.js"
+import { verifySessionAuth } from '../utils/authTools.js'
+import s3, { GetObjectCommand, GetObjectAclCommand } from '../services/s3Service.js'
+import db, { GetItemCommand } from "../services/dbService.js"
 
 const BUTT_KEY  = 'public/images/butts/'
 const FULL_BODY_KEY = 'public/images/full-lions/'
@@ -23,12 +23,9 @@ export const getButt = async (req, res) => {
 
 export const getSmallButt = async (req, res) => {
     const { imageName } = req.params
-    const { authorization, address } = req.headers
 
     try {
-        await verifySessionAuth(address, authorization)
-        await authorizeButtAccess(address, imageName)
-        getAndReturnImageFromS3(`${SMALL_BUTT_KEY}${imageName}`, res)
+        getAndReturnImageFromS3Public(`${SMALL_BUTT_KEY}${imageName}`, res)
     } catch (error) {
         return res.status(401).json({ error: error })
     }
@@ -36,12 +33,9 @@ export const getSmallButt = async (req, res) => {
 
 export const getMediumButt = async (req, res) => {
     const { imageName } = req.params
-    const { authorization, address } = req.headers
 
     try {
-        await verifySessionAuth(address, authorization)
-        await authorizeButtAccess(address, imageName)
-        getAndReturnImageFromS3(`${MEDIUM_BUTT_KEY}${imageName}`, res)
+        getAndReturnImageFromS3Public(`${MEDIUM_BUTT_KEY}${imageName}`, res)
     } catch (error) {
         return res.status(401).json({ error: error })
     }
@@ -96,6 +90,41 @@ async function getAndReturnImageFromS3(key, res) {  // <-- 'res' added as parame
         return res.status(400).json({ error: error })
     }
 }
+
+async function getAndReturnImageFromS3Public(key, res) {
+    // check if the image is public
+    const aclParams = {
+        Bucket: 'lazybutts',
+        Key: key
+    }
+
+    const aclCommand = new GetObjectAclCommand(aclParams)
+    try {
+        const aclData = await s3.send(aclCommand)
+        const Grantee = aclData.Grants.find(grant => grant.Grantee.URI === 'http://acs.amazonaws.com/groups/global/AllUsers')
+        if (Grantee ? Grantee.Permission === 'READ' : false) {
+            const params = {
+                Bucket: 'lazybutts',
+                Key: key
+            }
+            const command = new GetObjectCommand(params)
+            try {
+                const data = await s3.send(command)
+                res.writeHead(200, { 'Content-Type': 'image/png' })
+                data.Body.pipe(res)  // Piping the data directly to the response
+            } catch (error) {
+                console.log("Caught an error:", error);
+                return res.status(400).json({ error: error })
+            }
+        } else {
+            return res.status(401).json({ error: 'You are not authorized to view this image' })
+        }
+    } catch (error) {
+        console.log("Caught an error:", error);
+        return res.status(400).json({ error: error })
+    }
+}
+
 
 async function authorizeButtAccess(address, imageName) {
     const imageNamePrefix = imageName.split('.')[0]
