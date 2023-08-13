@@ -32,8 +32,8 @@ async function getPublicMetadataFromS3(key, res) {
             try {
                 const data = await s3.send(command)
                 res.writeHead(200, {
-                    'Content-Type': data.ContentType,
-                    'Content-Disposition': 'inline' // This will make it display inline in the browser instead of downloading
+                    'Content-Type': 'application/json',
+                    'Content-Disposition': 'inline'
                 })
                 data.Body.pipe(res)
             } catch (error) {
