@@ -3,6 +3,8 @@ import { verifyMessage } from 'ethers'
 import { verifySessionAuth } from '../utils/authTools.js'
 import redis from '../services/redisService.js'
 import dotenv from 'dotenv'
+import ALLOW_LIST from '../utils/addresses.json' assert { type: "json" }
+import { makeTree, getRoot, getProof } from '../utils/merkleTools.js';
 dotenv.config()
 
 const SESSION_EXPIRY_TIME = 86400 // 24 hours
@@ -47,5 +49,24 @@ export const checkLoggedIn = async (req, res) => {
         res.json({ success: true, message: "User is logged in" })
     } catch (err) {
         res.status(401).json({ message: err })
+    }
+}
+
+export const getMerkleProof = async (req, res) => {
+    const { address } = req.query
+
+    const tree = makeTree(ALLOW_LIST)
+    const root = getRoot(tree)
+
+    const { success, data, error } = getProof(tree, address)
+
+    if (success) {
+        res.json({
+            success: true,
+            root,
+            proof: data
+        })
+    } else {
+        res.status(500).json({ message: error })
     }
 }
