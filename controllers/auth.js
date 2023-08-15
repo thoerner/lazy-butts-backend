@@ -1,14 +1,18 @@
 import jsonwebtoken from 'jsonwebtoken'
-import { verifyMessage } from 'ethers'
+import { verifyMessage, Contract } from 'ethers'
 import { verifySessionAuth } from '../utils/authTools.js'
 import redis from '../services/redisService.js'
 import dotenv from 'dotenv'
 import ALLOW_LIST from '../utils/addresses.json' assert { type: "json" }
 import { makeTree, getRoot, getProof } from '../utils/merkleTools.js';
+import provider from '../services/ethService.js'
+import LazyButtsAbi from '../contracts/LazyButts.json' assert { type: "json" }
 dotenv.config()
 
 const SESSION_EXPIRY_TIME = 86400 // 24 hours
 const CHALLENGE_EXPIRY_TIME = 300 // 5 minutes
+
+const CONTRACT_ADDRESS = process.env.ENV === 'dev' ? process.env.BUTTS_CONTRACT_ADDRESS_TEST : process.env.BUTTS_CONTRACT_ADDRESS
 
 export const getToken = async (req, res) => {
     const { address } = req.query
@@ -67,6 +71,30 @@ export const getMerkleProof = async (req, res) => {
             proof: data
         })
     } else {
-        res.status(500).json({ message: error })
+        res.status(500).json({ 
+            success: false, 
+            message: error 
+        })
     }
+}
+
+export const isAllowListActive = async (req, res) => {
+
+    const contract = new Contract(CONTRACT_ADDRESS, LazyButtsAbi, provider)
+    let isActive
+    try {
+        isActive = await contract.isAllowListActive()
+    } catch (error) {
+        console.log(error)
+        res.status(500).json({ 
+            success: false, 
+            message: error.message || 'Error fetching allow list status.' 
+        })
+        return
+    }
+
+    res.json({
+        success: true,
+        isActive
+    })    
 }

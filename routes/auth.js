@@ -1,6 +1,6 @@
 import express from "express"
 import { check } from "express-validator"
-import { getToken, verifySignature, checkLoggedIn, getMerkleProof } from "../controllers/auth.js"
+import { getToken, verifySignature, checkLoggedIn, getMerkleProof, isAllowListActive } from "../controllers/auth.js"
 
 const validateAddressFormat = (address) => {
     return /^0x[a-fA-F0-9]{40}$/.test(address)
@@ -25,5 +25,6 @@ router.post("/verify", [
 router.get("/proof", [
     check("address", "Address is invalid").custom(validateAddressFormat)
 ], getMerkleProof)
+router.get("/allowlist", isAllowListActive)
 
 export default router

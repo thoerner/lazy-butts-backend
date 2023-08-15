@@ -17,7 +17,7 @@ export const getProof = (merkleTree, claimingAddress) => {
   if (!hexProof[0]) {
     return {
       success: false,
-      error: "Error: Address not on allow list!"
+      error: "Address not on access list!"
     }
   }
   return {
