@@ -158,3 +158,5 @@ contract.on("Transfer", (from, to, tokenId) => {
 contract.on("Mint", (to, tokenId) => {
     mintEvent(to, tokenId)
 })
+
+console.log(`Listening for events on contract ${BUTTS_CONTRACT_ADDRESS}...`)
