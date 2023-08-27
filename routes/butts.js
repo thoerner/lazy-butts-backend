@@ -9,6 +9,7 @@ const validateAddressFormat = (address) => {
     return /^0x[a-fA-F0-9]{40}$/.test(address)
 }
 
+router.get("/", getButts)
 router.get("/:address", 
     check("address", "Address is invalid").custom(validateAddressFormat),
 getButts)

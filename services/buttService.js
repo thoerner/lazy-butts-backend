@@ -147,6 +147,30 @@ const mintEvent = async (to, tokenId) => {
     await makeS3ObjectPublic(bucket, smallButtKey)
     await makeS3ObjectPublic(bucket, metadataKey)
     console.log(`Set ACLs for token ${tokenId}`)
+
+    // update set of mintedTokens in config table
+    const params = {
+        TableName: "config",
+        Key: {
+            "setting": {
+                S: "tokenConfig"
+            }
+        },
+        UpdateExpression: "ADD #mintedTokens :newToken",
+        ExpressionAttributeNames: {
+            "#mintedTokens": "mintedTokens"
+        },
+        ExpressionAttributeValues: {
+            ":newToken": {
+                NS: [tokenId.toString()]
+            }
+        }
+    }
+
+    const command = new UpdateItemCommand(params)
+
+    const data = await db.send(command)
+    console.log(`Updated mintedTokens in config table: ${data}`)
 }
 
 contract.on("Transfer", (from, to, tokenId) => {
