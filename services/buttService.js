@@ -123,31 +123,29 @@ const transferEvent = (from, to, tokenId) => {
 
 }
 
-function makeS3ObjectPublic(bucket, key) {
+async function makeS3ObjectPublic(bucket, key) {
     const params = {
         Bucket: bucket,
         Key: key,
         ACL: "public-read"
     }
-    s3.send(new PutObjectAclCommand(params))
-        .then((data) => {
-            // console.log(data)
-        })
-        .catch((error) => {
-            console.log(error)
-        })
+
+    const command = new PutObjectAclCommand(params)
+
+    const data = await s3.send(command)
+    console.log(data)
 }
 
 // set S3 image ACLs to public-read
-const mintEvent = (to, tokenId) => {
+const mintEvent = async (to, tokenId) => {
     console.log(`Minted token ${tokenId} to ${to}`)
     const bucket = process.env.BUCKET_NAME
     const mediumButtKey = `public/images/medium-lazy-butts/${tokenId}.png`
     const smallButtKey = `public/images/small-lazy-butts/${tokenId}.png`
     const metadataKey = `public/metadata/${tokenId}.json`
-    makeS3ObjectPublic(bucket, mediumButtKey)
-    makeS3ObjectPublic(bucket, smallButtKey)
-    makeS3ObjectPublic(bucket, metadataKey)
+    await makeS3ObjectPublic(bucket, mediumButtKey)
+    await makeS3ObjectPublic(bucket, smallButtKey)
+    await makeS3ObjectPublic(bucket, metadataKey)
     console.log(`Set ACLs for token ${tokenId}`)
 }
 
