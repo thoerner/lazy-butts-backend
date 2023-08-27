@@ -2,6 +2,22 @@ import { verifySessionAuth } from "../utils/authTools.js"
 import { validationResult } from "express-validator"
 import { db, GetItemCommand } from "../services/dbService.js"
 
+export const getAllButts = async (req, res) => {
+    try {
+        const data = await db.send(new GetItemCommand({
+            TableName: "config",
+            Key: {
+                "setting": {
+                    S: "tokenConfig"
+                }
+            }
+        }))
+        res.json(data.Item.mintedTokens.NS.map(butt => butt))
+    } catch (err) {
+        res.status(404).json({ message: "Butts not found" })
+    }
+}
+
 export const getButt = async (req, res) => {
     const errors = validationResult(req)
     if (!errors.isEmpty()) {
