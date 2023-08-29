@@ -65,7 +65,7 @@ export const getSocial = async (req, res) => {
     try {
         await verifySessionAuth(address, authorization)
         await authorizeButtAccess(address, imageName)
-        getAndReturnImageFromS3Public(`${SOCIAL_KEY}${imageName}`, res)
+        getAndReturnImageFromS3(`${SOCIAL_KEY}${imageName}`, res)
     } catch (error) {
         return res.status(401).json({ error: error })
     }
