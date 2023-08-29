@@ -25,6 +25,8 @@ export const getButt = async (req, res) => {
 export const getSmallButt = async (req, res) => {
     const { imageName } = req.params
 
+    console.log(`getSmallButt: ${imageName}`)
+
     try {
         getAndReturnImageFromS3Public(`${SMALL_BUTT_KEY}${imageName}`, res)
     } catch (error) {
