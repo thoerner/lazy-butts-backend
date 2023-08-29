@@ -1,6 +1,6 @@
 import express from "express"
 import { check } from "express-validator"
-import { getButt, getFullBody, getFullBodyThumb, getSmallButt, getMediumButt } from "../controllers/images.js"
+import { getButt, getFullBody, getFullBodyThumb, getSmallButt, getMediumButt, getSocial } from "../controllers/images.js"
 
 const router = express.Router()
 
@@ -37,5 +37,10 @@ router.get("/small/:imageName", [
 router.get("/medium/:imageName", [
     check("imageName", "Invalid image format.").custom(validateImageExtension),
 ], getMediumButt)
+router.get("/social/:imageName", [
+    check("address", "Address is invalid").isLength({ min: 42, max: 42 }).withMessage("Address is invalid"),
+    check("authorization", "Authorization header is required").not().isEmpty(),
+    check("imageName", "Invalid image format.").custom(validateImageExtension),
+], getSocial)
 
 export default router
