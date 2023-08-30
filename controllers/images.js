@@ -5,7 +5,7 @@ import db, { GetItemCommand } from "../services/dbService.js"
 
 const BUTT_KEY  = 'public/images/butts/'
 const FULL_BODY_KEY = 'public/images/full-lions/'
-const SOCIAL_KEY = 'public/images/square-lions/'
+const SOCIAL_KEY = 'public/images/social-lions/'
 const FULL_BODY_THUMB_KEY = 'public/images/small-full-lions/'
 const SMALL_BUTT_KEY = 'public/images/small-lazy-butts/'
 const MEDIUM_BUTT_KEY = 'public/images/medium-lazy-butts/'
