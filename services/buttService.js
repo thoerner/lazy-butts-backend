@@ -42,6 +42,7 @@ const processEvent = async (event) => {
 
     try {
         if (type === 'transfer') {
+            console.log(`Transferred token ${tokenId} from ${from} to ${to}`)
             const getItemCommand = new GetItemCommand({
                 TableName: "users",
                 Key: {
@@ -88,6 +89,7 @@ const processEvent = async (event) => {
                     await db.send(new UpdateItemCommand(params2));
                 }
             }
+            console.log(`Updated user data for ${to}`)
         } else if (type === 'mint') {
             console.log(`Minted token ${tokenId} to ${to}`)
             const bucket = process.env.BUCKET_NAME
