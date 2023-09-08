@@ -148,7 +148,7 @@ const transferEvent = (from, to, tokenId) => {
             while (retries > 0 && !operationSuccess) {
                 try {
                     await processEvent(event);
-                    console.log(`Successfully processed event: ${JSON.stringify(event)}`);
+                    console.log(`Successfully processed event`);
                     operationSuccess = true; // set flag to true
                 } catch (err) {
                     // Check the type of error, if it's a non-recoverable error break out of the loop
