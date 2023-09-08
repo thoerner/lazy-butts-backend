@@ -147,7 +147,6 @@ const transferEvent = (from, to, tokenId) => {
 
             while (retries > 0 && !operationSuccess) {
                 try {
-                    console.log(`Processing event: ${JSON.stringify(event)}`);
                     await processEvent(event);
                     console.log(`Successfully processed event: ${JSON.stringify(event)}`);
                     operationSuccess = true; // set flag to true
@@ -164,6 +163,7 @@ const transferEvent = (from, to, tokenId) => {
         }
     };
 
+
     async function makeS3ObjectPublic(bucket, key) {
         const params = {
             Bucket: bucket,
@@ -171,7 +171,7 @@ const transferEvent = (from, to, tokenId) => {
             ACL: "public-read"
         }
         const command = new PutObjectAclCommand(params)
-        await s3.send(command)
+        const data = await s3.send(command)
     }
 
     const mintEvent = async (to, tokenId) => {
