@@ -15,12 +15,12 @@ class EventQueue {
 
     enqueue(event) {
         const isDuplicate = this.queue.some(
-            queuedEvent => queuedEvent.type === event.type && 
-                           queuedEvent.from === event.from && 
-                           queuedEvent.to === event.to && 
-                           queuedEvent.tokenId === event.tokenId
+            queuedEvent => queuedEvent.type === event.type &&
+                queuedEvent.from === event.from &&
+                queuedEvent.to === event.to &&
+                queuedEvent.tokenId === event.tokenId
         );
-    
+
         if (!isDuplicate) {
             this.queue.push(event);
         }
@@ -39,157 +39,94 @@ const eventQueue = new EventQueue();
 
 const processEvent = async (event) => {
     const { type, from, to, tokenId } = event;
-    if (type === 'transfer') {
-        db.send(new GetItemCommand({
-            TableName: "users",
-            Key: {
-                "address": {
-                    S: to
+
+    try {
+        if (type === 'transfer') {
+            const getItemCommand = new GetItemCommand({
+                TableName: "users",
+                Key: {
+                    "address": { S: to }
                 }
-            }
-        }))
-            .then((data) => {
-                console.log(data)
-                if (data.Item === undefined) {
-                    const putParams = {
-                        TableName: "users",
-                        Item: {
-                            "address": {
-                                S: to
-                            },
-                            "butts": {
-                                L: [
-                                    {
-                                        N: tokenId.toString()
-                                    }
-                                ]
-                            }
-                        }
+            });
+            const userData = await db.send(getItemCommand);
+
+            if (userData.Item === undefined) {
+                const putParams = {
+                    TableName: "users",
+                    Item: {
+                        "address": { S: to },
+                        "butts": { L: [{ N: tokenId.toString() }] }
                     }
-                    db.send(new PutItemCommand(putParams))
-                        .then((data) => {
-                            // console.log(data)
-                        }
-                        )
-                        .catch((error) => {
-                            console.log(error)
-                        }
-                        )
-                } else {
-
-                    const params = {
-                        TableName: "users",
-                        Key: {
-                            "address": {
-                                S: to
-                            }
-                        },
-                        UpdateExpression: "SET #butts = list_append(#butts, :newButt)",
-                        ExpressionAttributeNames: {
-                            "#butts": "butts"
-                        },
-                        ExpressionAttributeValues: {
-                            ":newButt": {
-                                L: [
-                                    {
-                                        N: tokenId.toString()
-                                    }
-                                ]
-                            }
-                        }
-                    }
-                    db.send(new UpdateItemCommand(params))
-                        .then((data) => {
-                            // console.log(data)
-                        }
-                        )
-                        .catch((error) => {
-                            console.log(error)
-                        }
-                        )
-                }
-            })
-
-        if (from === ZeroAddress) {
-            return
-        }
-
-        db.send(new GetItemCommand({
-            TableName: "users",
-            Key: {
-                "address": {
-                    S: from
-                }
+                };
+                await db.send(new PutItemCommand(putParams));
+            } else {
+                const updateParams = {
+                    TableName: "users",
+                    Key: { "address": { S: to } },
+                    UpdateExpression: "SET #butts = list_append(#butts, :newButt)",
+                    ExpressionAttributeNames: { "#butts": "butts" },
+                    ExpressionAttributeValues: { ":newButt": { L: [{ N: tokenId.toString() }] } }
+                };
+                await db.send(new UpdateItemCommand(updateParams));
             }
-        }))
-            .then((data) => {
-                const butts = data.Item.butts.L; // Assuming that butts is a list of numbers.
+
+            if (from !== ZeroAddress) {
+                const fromUserData = await db.send(new GetItemCommand({
+                    TableName: "users",
+                    Key: { "address": { S: from } }
+                }));
+                const butts = fromUserData.Item.butts.L;
                 const index = butts.findIndex(butt => Number(butt.N) === tokenId);
 
                 if (index > -1) {
                     const params2 = {
                         TableName: "users",
-                        Key: {
-                            "address": {
-                                S: from
-                            }
-                        },
+                        Key: { "address": { S: from } },
                         UpdateExpression: `REMOVE #butts[${index}]`,
-                        ExpressionAttributeNames: {
-                            "#butts": "butts"
-                        }
+                        ExpressionAttributeNames: { "#butts": "butts" }
                     };
-                    db.send(new UpdateItemCommand(params2))
-                        .then((data) => {
-                            // console.log(data);
-                        })
-                        .catch((error) => {
-                            console.log(error);
-                        });
-                }
-            })
-            .catch((error) => {
-                console.log(error);
-            });
-    } else if (type === 'mint') {
-        console.log(`Minted token ${tokenId} to ${to}`)
-        const bucket = process.env.BUCKET_NAME
-        const mediumButtKey = `public/images/medium-lazy-butts/${tokenId}.png`
-        const smallButtKey = `public/images/small-lazy-butts/${tokenId}.png`
-        const metadataKey = `public/metadata/${tokenId}.json`
-        await makeS3ObjectPublic(bucket, mediumButtKey)
-        await makeS3ObjectPublic(bucket, smallButtKey)
-        await makeS3ObjectPublic(bucket, metadataKey)
-        console.log(`Set ACLs for token ${tokenId}`)
-
-        // update set of mintedTokens in config table
-        const params = {
-            TableName: "config",
-            Key: {
-                "setting": {
-                    S: "tokenConfig"
-                }
-            },
-            UpdateExpression: "ADD #mintedTokens :newToken",
-            ExpressionAttributeNames: {
-                "#mintedTokens": "mintedTokens"
-            },
-            ExpressionAttributeValues: {
-                ":newToken": {
-                    NS: [tokenId.toString()]
+                    await db.send(new UpdateItemCommand(params2));
                 }
             }
+        } else if (type === 'mint') {
+            console.log(`Minted token ${tokenId} to ${to}`)
+            const bucket = process.env.BUCKET_NAME
+            const mediumButtKey = `public/images/medium-lazy-butts/${tokenId}.png`
+            const smallButtKey = `public/images/small-lazy-butts/${tokenId}.png`
+            const metadataKey = `public/metadata/${tokenId}.json`
+            await makeS3ObjectPublic(bucket, mediumButtKey)
+            await makeS3ObjectPublic(bucket, smallButtKey)
+            await makeS3ObjectPublic(bucket, metadataKey)
+            console.log(`Set ACLs for token ${tokenId}`)
+
+            // update set of mintedTokens in config table
+            const params = {
+                TableName: "config",
+                Key: {
+                    "setting": {
+                        S: "tokenConfig"
+                    }
+                },
+                UpdateExpression: "ADD #mintedTokens :newToken",
+                ExpressionAttributeNames: {
+                    "#mintedTokens": "mintedTokens"
+                },
+                ExpressionAttributeValues: {
+                    ":newToken": {
+                        NS: [tokenId.toString()]
+                    }
+                }
+            }
+
+            const command = new UpdateItemCommand(params)
+
+            const data = await db.send(command)
+            console.log(`Updated mintedTokens in config table: ${JSON.stringify(data)}`)
         }
-
-        const command = new UpdateItemCommand(params)
-
-        const data = await db.send(command)
-        console.log(`Updated mintedTokens in config table: ${data}`)
+    } catch (err) {
+        console.error(`Error processing event: ${JSON.stringify(event)}`);
+        throw err;
     }
-}
-
-const transferEvent = (from, to, tokenId) => {
-    eventQueue.enqueue({ type: 'transfer', from, to, tokenId });
 }
 
 function isNonRecoverableError(err) {
@@ -198,56 +135,60 @@ function isNonRecoverableError(err) {
     return err.message.includes('Duplicate');
 }
 
-const runEventQueue = async () => {
-    while (eventQueue.length > 0) {
-        const event = eventQueue.dequeue();
-        let retries = 3; // number of retries
-        let operationSuccess = false; // flag to indicate successful operation
+const transferEvent = (from, to, tokenId) => {
+        eventQueue.enqueue({ type: 'transfer', from, to, tokenId });
+    }
 
-        while (retries > 0 && !operationSuccess) {
-            try {
-                await processEvent(event);
-                console.log(`Successfully processed event: ${JSON.stringify(event)}`);
-                operationSuccess = true; // set flag to true
-            } catch (err) {
-                // Check the type of error, if it's a non-recoverable error break out of the loop
-                if (isNonRecoverableError(err)) {
-                    console.error(`Non-recoverable error: ${err}`);
-                    break;
+    const runEventQueue = async () => {
+        while (eventQueue.length > 0) {
+            const event = eventQueue.dequeue();
+            let retries = 3; // number of retries
+            let operationSuccess = false; // flag to indicate successful operation
+
+            while (retries > 0 && !operationSuccess) {
+                try {
+                    await processEvent(event);
+                    console.log(`Successfully processed event: ${JSON.stringify(event)}`);
+                    operationSuccess = true; // set flag to true
+                } catch (err) {
+                    // Check the type of error, if it's a non-recoverable error break out of the loop
+                    if (isNonRecoverableError(err)) {
+                        console.error(`Non-recoverable error: ${err}`);
+                        break;
+                    }
+                    retries--;
+                    console.error(`Retrying event. Attempts remaining: ${retries}`);
                 }
-                retries--;
-                console.error(`Retrying event. Attempts remaining: ${retries}`);
             }
         }
+    };
+
+
+    async function makeS3ObjectPublic(bucket, key) {
+        const params = {
+            Bucket: bucket,
+            Key: key,
+            ACL: "public-read"
+        }
+
+        const command = new PutObjectAclCommand(params)
+
+        const data = await s3.send(command)
+        console.log(data)
     }
-};
 
-  
-async function makeS3ObjectPublic(bucket, key) {
-    const params = {
-        Bucket: bucket,
-        Key: key,
-        ACL: "public-read"
+    const mintEvent = async (to, tokenId) => {
+        eventQueue.enqueue({ type: 'mint', to, tokenId });
     }
 
-    const command = new PutObjectAclCommand(params)
+    contract.on("Transfer", (from, to, tokenId) => {
+        transferEvent(from, to, tokenId)
+    })
 
-    const data = await s3.send(command)
-    console.log(data)
-}
+    contract.on("Mint", (to, tokenId) => {
+        mintEvent(to, tokenId)
+    })
 
-const mintEvent = async (to, tokenId) => {
-    eventQueue.enqueue({ type: 'mint', to, tokenId });
-}
+    setInterval(runEventQueue, 3000);
 
-contract.on("Transfer", (from, to, tokenId) => {
-    transferEvent(from, to, tokenId)
-})
-
-contract.on("Mint", (to, tokenId) => {
-    mintEvent(to, tokenId)
-})
-
-setInterval(runEventQueue, 3000);
-
-console.log(`Listening for events on contract ${BUTTS_CONTRACT_ADDRESS}...`)
+    console.log(`Listening for events on contract ${BUTTS_CONTRACT_ADDRESS}...`)
