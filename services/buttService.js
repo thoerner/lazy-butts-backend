@@ -194,21 +194,28 @@ const transferEvent = (from, to, tokenId) => {
 
 const runEventQueue = async () => {
     while (eventQueue.length > 0) {
-      const event = eventQueue.dequeue();
-      let retries = 3; // number of retries
-  
-      while (retries > 0) {
-        try {
-          await processEvent(event);
-          console.log(`Successfully processed event: ${JSON.stringify(event)}`);
-          break; // exit loop if successful
-        } catch (err) {
-          retries--;
-          console.error(`Retrying event. Attempts remaining: ${retries}`);
+        const event = eventQueue.dequeue();
+        let retries = 3; // number of retries
+        let operationSuccess = false; // flag to indicate successful operation
+
+        while (retries > 0 && !operationSuccess) {
+            try {
+                await processEvent(event);
+                console.log(`Successfully processed event: ${JSON.stringify(event)}`);
+                operationSuccess = true; // set flag to true
+            } catch (err) {
+                // Check the type of error, if it's a non-recoverable error break out of the loop
+                if (isNonRecoverableError(err)) {
+                    console.error(`Non-recoverable error: ${err}`);
+                    break;
+                }
+                retries--;
+                console.error(`Retrying event. Attempts remaining: ${retries}`);
+            }
         }
-      }
     }
-  };
+};
+
   
 async function makeS3ObjectPublic(bucket, key) {
     const params = {
