@@ -157,6 +157,7 @@ const transferEvent = (from, to, tokenId) => {
                         break;
                     }
                     retries--;
+                    console.error(`Error: ${err}`); // log error
                     console.error(`Retrying event. Attempts remaining: ${retries}`);
                 }
             }
