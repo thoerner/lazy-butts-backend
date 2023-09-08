@@ -14,7 +14,16 @@ class EventQueue {
     }
 
     enqueue(event) {
-        this.queue.push(event);
+        const isDuplicate = this.queue.some(
+            queuedEvent => queuedEvent.type === event.type && 
+                           queuedEvent.from === event.from && 
+                           queuedEvent.to === event.to && 
+                           queuedEvent.tokenId === event.tokenId
+        );
+    
+        if (!isDuplicate) {
+            this.queue.push(event);
+        }
     }
 
     dequeue() {
