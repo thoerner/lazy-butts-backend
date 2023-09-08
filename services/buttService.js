@@ -8,121 +8,199 @@ const BUTTS_CONTRACT_ADDRESS = process.env.ENV === 'dev' ? process.env.BUTTS_CON
 
 const contract = new Contract(BUTTS_CONTRACT_ADDRESS, LazyButtsAbi, provider)
 
-const transferEvent = (from, to, tokenId) => {
-    db.send(new GetItemCommand({
-        TableName: "users",
-        Key: {
-            "address": {
-                S: to
-            }
-        }
-    }))
-        .then((data) => {
-            console.log(data)
-            if (data.Item === undefined) {
-                const putParams = {
-                    TableName: "users",
-                    Item: {
-                        "address": {
-                            S: to
-                        },
-                        "butts": {
-                            L: [
-                                {
-                                    N: tokenId.toString()
-                                }
-                            ]
-                        }
-                    }
-                }
-                db.send(new PutItemCommand(putParams))
-                    .then((data) => {
-                        // console.log(data)
-                    }
-                    )
-                    .catch((error) => {
-                        console.log(error)
-                    }
-                    )
-            } else {
-
-                const params = {
-                    TableName: "users",
-                    Key: {
-                        "address": {
-                            S: to
-                        }
-                    },
-                    UpdateExpression: "SET #butts = list_append(#butts, :newButt)",
-                    ExpressionAttributeNames: {
-                        "#butts": "butts"
-                    },
-                    ExpressionAttributeValues: {
-                        ":newButt": {
-                            L: [
-                                {
-                                    N: tokenId.toString()
-                                }
-                            ]
-                        }
-                    }
-                }
-                db.send(new UpdateItemCommand(params))
-                    .then((data) => {
-                        // console.log(data)
-                    }
-                    )
-                    .catch((error) => {
-                        console.log(error)
-                    }
-                    )
-            }
-        })
-
-    if (from === ZeroAddress) {
-        return
+class EventQueue {
+    constructor() {
+        this.queue = [];
     }
 
-    db.send(new GetItemCommand({
-        TableName: "users",
-        Key: {
-            "address": {
-                S: from
-            }
-        }
-    }))
-        .then((data) => {
-            const butts = data.Item.butts.L; // Assuming that butts is a list of numbers.
-            const index = butts.findIndex(butt => Number(butt.N) === tokenId);
+    enqueue(event) {
+        this.queue.push(event);
+    }
 
-            if (index > -1) {
-                const params2 = {
-                    TableName: "users",
-                    Key: {
-                        "address": {
-                            S: from
-                        }
-                    },
-                    UpdateExpression: `REMOVE #butts[${index}]`,
-                    ExpressionAttributeNames: {
-                        "#butts": "butts"
-                    }
-                };
-                db.send(new UpdateItemCommand(params2))
-                    .then((data) => {
-                        // console.log(data);
-                    })
-                    .catch((error) => {
-                        console.log(error);
-                    });
-            }
-        })
-        .catch((error) => {
-            console.log(error);
-        });
+    dequeue() {
+        return this.queue.shift();
+    }
 
+    get length() {
+        return this.queue.length;
+    }
 }
 
+const eventQueue = new EventQueue();
+
+const processEvent = async (event) => {
+    const { type, from, to, tokenId } = event;
+    if (type === 'transfer') {
+        db.send(new GetItemCommand({
+            TableName: "users",
+            Key: {
+                "address": {
+                    S: to
+                }
+            }
+        }))
+            .then((data) => {
+                console.log(data)
+                if (data.Item === undefined) {
+                    const putParams = {
+                        TableName: "users",
+                        Item: {
+                            "address": {
+                                S: to
+                            },
+                            "butts": {
+                                L: [
+                                    {
+                                        N: tokenId.toString()
+                                    }
+                                ]
+                            }
+                        }
+                    }
+                    db.send(new PutItemCommand(putParams))
+                        .then((data) => {
+                            // console.log(data)
+                        }
+                        )
+                        .catch((error) => {
+                            console.log(error)
+                        }
+                        )
+                } else {
+
+                    const params = {
+                        TableName: "users",
+                        Key: {
+                            "address": {
+                                S: to
+                            }
+                        },
+                        UpdateExpression: "SET #butts = list_append(#butts, :newButt)",
+                        ExpressionAttributeNames: {
+                            "#butts": "butts"
+                        },
+                        ExpressionAttributeValues: {
+                            ":newButt": {
+                                L: [
+                                    {
+                                        N: tokenId.toString()
+                                    }
+                                ]
+                            }
+                        }
+                    }
+                    db.send(new UpdateItemCommand(params))
+                        .then((data) => {
+                            // console.log(data)
+                        }
+                        )
+                        .catch((error) => {
+                            console.log(error)
+                        }
+                        )
+                }
+            })
+
+        if (from === ZeroAddress) {
+            return
+        }
+
+        db.send(new GetItemCommand({
+            TableName: "users",
+            Key: {
+                "address": {
+                    S: from
+                }
+            }
+        }))
+            .then((data) => {
+                const butts = data.Item.butts.L; // Assuming that butts is a list of numbers.
+                const index = butts.findIndex(butt => Number(butt.N) === tokenId);
+
+                if (index > -1) {
+                    const params2 = {
+                        TableName: "users",
+                        Key: {
+                            "address": {
+                                S: from
+                            }
+                        },
+                        UpdateExpression: `REMOVE #butts[${index}]`,
+                        ExpressionAttributeNames: {
+                            "#butts": "butts"
+                        }
+                    };
+                    db.send(new UpdateItemCommand(params2))
+                        .then((data) => {
+                            // console.log(data);
+                        })
+                        .catch((error) => {
+                            console.log(error);
+                        });
+                }
+            })
+            .catch((error) => {
+                console.log(error);
+            });
+    } else if (type === 'mint') {
+        console.log(`Minted token ${tokenId} to ${to}`)
+        const bucket = process.env.BUCKET_NAME
+        const mediumButtKey = `public/images/medium-lazy-butts/${tokenId}.png`
+        const smallButtKey = `public/images/small-lazy-butts/${tokenId}.png`
+        const metadataKey = `public/metadata/${tokenId}.json`
+        await makeS3ObjectPublic(bucket, mediumButtKey)
+        await makeS3ObjectPublic(bucket, smallButtKey)
+        await makeS3ObjectPublic(bucket, metadataKey)
+        console.log(`Set ACLs for token ${tokenId}`)
+
+        // update set of mintedTokens in config table
+        const params = {
+            TableName: "config",
+            Key: {
+                "setting": {
+                    S: "tokenConfig"
+                }
+            },
+            UpdateExpression: "ADD #mintedTokens :newToken",
+            ExpressionAttributeNames: {
+                "#mintedTokens": "mintedTokens"
+            },
+            ExpressionAttributeValues: {
+                ":newToken": {
+                    NS: [tokenId.toString()]
+                }
+            }
+        }
+
+        const command = new UpdateItemCommand(params)
+
+        const data = await db.send(command)
+        console.log(`Updated mintedTokens in config table: ${data}`)
+    }
+}
+
+const transferEvent = (from, to, tokenId) => {
+    eventQueue.enqueue({ type: 'transfer', from, to, tokenId });
+}
+
+const runEventQueue = async () => {
+    while (eventQueue.length > 0) {
+      const event = eventQueue.dequeue();
+      let retries = 3; // number of retries
+  
+      while (retries > 0) {
+        try {
+          await processEvent(event);
+          console.log(`Successfully processed event: ${JSON.stringify(event)}`);
+          break; // exit loop if successful
+        } catch (err) {
+          retries--;
+          console.error(`Retrying event. Attempts remaining: ${retries}`);
+        }
+      }
+    }
+  };
+  
 async function makeS3ObjectPublic(bucket, key) {
     const params = {
         Bucket: bucket,
@@ -136,41 +214,8 @@ async function makeS3ObjectPublic(bucket, key) {
     console.log(data)
 }
 
-// set S3 image ACLs to public-read
 const mintEvent = async (to, tokenId) => {
-    console.log(`Minted token ${tokenId} to ${to}`)
-    const bucket = process.env.BUCKET_NAME
-    const mediumButtKey = `public/images/medium-lazy-butts/${tokenId}.png`
-    const smallButtKey = `public/images/small-lazy-butts/${tokenId}.png`
-    const metadataKey = `public/metadata/${tokenId}.json`
-    await makeS3ObjectPublic(bucket, mediumButtKey)
-    await makeS3ObjectPublic(bucket, smallButtKey)
-    await makeS3ObjectPublic(bucket, metadataKey)
-    console.log(`Set ACLs for token ${tokenId}`)
-
-    // update set of mintedTokens in config table
-    const params = {
-        TableName: "config",
-        Key: {
-            "setting": {
-                S: "tokenConfig"
-            }
-        },
-        UpdateExpression: "ADD #mintedTokens :newToken",
-        ExpressionAttributeNames: {
-            "#mintedTokens": "mintedTokens"
-        },
-        ExpressionAttributeValues: {
-            ":newToken": {
-                NS: [tokenId.toString()]
-            }
-        }
-    }
-
-    const command = new UpdateItemCommand(params)
-
-    const data = await db.send(command)
-    console.log(`Updated mintedTokens in config table: ${data}`)
+    eventQueue.enqueue({ type: 'mint', to, tokenId });
 }
 
 contract.on("Transfer", (from, to, tokenId) => {
@@ -180,5 +225,7 @@ contract.on("Transfer", (from, to, tokenId) => {
 contract.on("Mint", (to, tokenId) => {
     mintEvent(to, tokenId)
 })
+
+setInterval(runEventQueue, 3000);
 
 console.log(`Listening for events on contract ${BUTTS_CONTRACT_ADDRESS}...`)
