@@ -192,6 +192,12 @@ const transferEvent = (from, to, tokenId) => {
     eventQueue.enqueue({ type: 'transfer', from, to, tokenId });
 }
 
+function isNonRecoverableError(err) {
+    // Replace with your own logic
+    // For example, let's consider an error to be non-recoverable if it contains the string 'Duplicate'
+    return err.message.includes('Duplicate');
+}
+
 const runEventQueue = async () => {
     while (eventQueue.length > 0) {
         const event = eventQueue.dequeue();
