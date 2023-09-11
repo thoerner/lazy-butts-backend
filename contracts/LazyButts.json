@@ -1,16 +1,5 @@
 [
 	{
-		"inputs": [
-			{
-				"internalType": "address",
-				"name": "operator",
-				"type": "address"
-			}
-		],
-		"name": "OperatorNotAllowed",
-		"type": "error"
-	},
-	{
 		"anonymous": false,
 		"inputs": [
 			{
@@ -209,7 +198,7 @@
 		"inputs": [
 			{
 				"internalType": "address",
-				"name": "operator",
+				"name": "to",
 				"type": "address"
 			},
 			{
@@ -447,6 +436,19 @@
 	{
 		"inputs": [
 			{
+				"internalType": "bool",
+				"name": "isMintActive_",
+				"type": "bool"
+			}
+		],
+		"name": "setMintActive",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
 				"internalType": "string",
 				"name": "prefix",
 				"type": "string"
@@ -667,6 +669,19 @@
 	},
 	{
 		"inputs": [],
+		"name": "isMintActive",
+		"outputs": [
+			{
+				"internalType": "bool",
+				"name": "",
+				"type": "bool"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
 		"name": "merkleRoot",
 		"outputs": [
 			{
@@ -686,19 +701,6 @@
 				"internalType": "string",
 				"name": "",
 				"type": "string"
-			}
-		],
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"inputs": [],
-		"name": "OPERATOR_FILTER_REGISTRY",
-		"outputs": [
-			{
-				"internalType": "contract IOperatorFilterRegistry",
-				"name": "",
-				"type": "address"
 			}
 		],
 		"stateMutability": "view",
