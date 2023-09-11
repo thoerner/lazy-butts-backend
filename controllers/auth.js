@@ -71,9 +71,9 @@ export const getMerkleProof = async (req, res) => {
             proof: data
         })
     } else {
-        res.status(500).json({ 
-            success: false, 
-            message: error 
+        res.status(500).json({
+            success: false,
+            message: error
         })
     }
 }
@@ -86,9 +86,9 @@ export const isAllowListActive = async (req, res) => {
         isActive = await contract.isAllowListActive()
     } catch (error) {
         console.log(error)
-        res.status(500).json({ 
-            success: false, 
-            message: error.message || 'Error fetching allow list status.' 
+        res.status(500).json({
+            success: false,
+            message: error.message || 'Error fetching allow list status.'
         })
         return
     }
@@ -96,5 +96,28 @@ export const isAllowListActive = async (req, res) => {
     res.json({
         success: true,
         isActive
-    })    
+    })
 }
+
+export const isMintActive = async (req, res) => {
+
+    const contract = new Contract(CONTRACT_ADDRESS, LazyButtsAbi, provider)
+    let isActive
+    try {
+        isActive = await contract.isMintActive()
+    } catch (error) {
+        console.log(error)
+        res.status(500).json({
+            success: false,
+            message: error.message || 'Error fetching mint status.'
+        })
+        return
+    }
+
+    res.json({
+        success: true,
+        isActive
+    })
+}
+
+

@@ -123,7 +123,7 @@ const processEvent = async (event) => {
             const command = new UpdateItemCommand(params)
 
             const data = await db.send(command)
-            console.log(`Updated mintedTokens in config table: ${JSON.stringify(data)}`)
+            console.log(`Updated mintedTokens in config table`)
         }
     } catch (err) {
         console.error(`Error processing event: ${JSON.stringify(event)}`);
