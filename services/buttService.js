@@ -4,6 +4,9 @@ import s3, { PutObjectAclCommand } from "./s3Service.js"
 import { Contract, ZeroAddress } from "ethers"
 import LazyButtsAbi from "../contracts/LazyButts.json" assert { type: "json" }
 
+const MAX_RETRIES = 3;
+const INITIAL_RETRY_DELAY = 1000;
+
 const BUTTS_CONTRACT_ADDRESS = process.env.ENV === 'dev' ? process.env.BUTTS_CONTRACT_ADDRESS_TEST : process.env.BUTTS_CONTRACT_ADDRESS
 
 const contract = new Contract(BUTTS_CONTRACT_ADDRESS, LazyButtsAbi, provider)
@@ -96,9 +99,21 @@ const processEvent = async (event) => {
             const mediumButtKey = `public/images/medium-lazy-butts/${tokenId}.png`
             const smallButtKey = `public/images/small-lazy-butts/${tokenId}.png`
             const metadataKey = `public/metadata/${tokenId}.json`
-            await makeS3ObjectPublic(bucket, mediumButtKey)
-            await makeS3ObjectPublic(bucket, smallButtKey)
-            await makeS3ObjectPublic(bucket, metadataKey)
+            try {
+                await makeS3ObjectPublic(bucket, mediumButtKey)
+            } catch (err) {
+                console.error(`Error making S3 object public: ${err}`)
+            }
+            try {
+                await makeS3ObjectPublic(bucket, smallButtKey)
+            } catch (err) {
+                console.error(`Error making S3 object public: ${err}`)
+            }
+            try {
+                await makeS3ObjectPublic(bucket, metadataKey)
+            } catch (err) {
+                console.error(`Error making S3 object public: ${err}`)
+            }
             console.log(`Set ACLs for token ${tokenId}`)
 
             // update set of mintedTokens in config table
@@ -138,57 +153,77 @@ function isNonRecoverableError(err) {
 }
 
 const transferEvent = (from, to, tokenId) => {
-        eventQueue.enqueue({ type: 'transfer', from, to, tokenId });
-    }
+    eventQueue.enqueue({ type: 'transfer', from, to, tokenId });
+}
 
-    const runEventQueue = async () => {
-        while (eventQueue.length > 0) {
-            const event = eventQueue.dequeue();
-            let retries = 3; // number of retries
-            let operationSuccess = false; // flag to indicate successful operation
+const runEventQueue = async () => {
+    while (eventQueue.length > 0) {
+        const event = eventQueue.dequeue();
+        let retries = 3; // number of retries
+        let operationSuccess = false; // flag to indicate successful operation
 
-            while (retries > 0 && !operationSuccess) {
-                try {
-                    await processEvent(event);
-                    console.log(`Successfully processed event`);
-                    operationSuccess = true; // set flag to true
-                } catch (err) {
-                    // Check the type of error, if it's a non-recoverable error break out of the loop
-                    if (isNonRecoverableError(err)) {
-                        console.error(`Non-recoverable error: ${err}`);
-                        break;
-                    }
-                    retries--;
-                    console.error(`Error: ${err}`); // log error
-                    console.error(`Retrying event. Attempts remaining: ${retries}`);
+        while (retries > 0 && !operationSuccess) {
+            try {
+                await processEvent(event);
+                console.log(`Successfully processed event`);
+                operationSuccess = true; // set flag to true
+            } catch (err) {
+                // Check the type of error, if it's a non-recoverable error break out of the loop
+                if (isNonRecoverableError(err)) {
+                    console.error(`Non-recoverable error: ${err}`);
+                    break;
                 }
+                retries--;
+                console.error(`Error: ${err}`); // log error
+                console.error(`Retrying event. Attempts remaining: ${retries}`);
             }
         }
-    };
+    }
+};
 
+async function makeS3ObjectPublic(bucket, key) {
+    let retries = 0;
+    let retryDelay = INITIAL_RETRY_DELAY;
 
-    async function makeS3ObjectPublic(bucket, key) {
-        const params = {
-            Bucket: bucket,
-            Key: key,
-            ACL: "public-read"
+    while (retries < MAX_RETRIES) {
+        try {
+            const params = {
+                Bucket: bucket,
+                Key: key,
+                ACL: "public-read",
+            };
+            const command = new PutObjectAclCommand(params);
+            const data = await s3.send(command);
+
+            console.log('Successfully made the object public');
+            return; // Successfully done
+        } catch (error) {
+            console.error(`Attempt ${retries + 1} for bucket "${bucket}" and key "${key}" failed:`, error);
+            retries++;
+
+            if (retries >= MAX_RETRIES) {
+                throw new Error(`Max retries reached for bucket "${bucket}" and key "${key}", operation failed.`);
+            }
+
+            await new Promise(resolve => setTimeout(resolve, retryDelay));
+            retryDelay *= 2;  // Exponential backoff
         }
-        const command = new PutObjectAclCommand(params)
-        const data = await s3.send(command)
     }
+}
 
-    const mintEvent = async (to, tokenId) => {
-        eventQueue.enqueue({ type: 'mint', to, tokenId });
-    }
 
-    contract.on("Transfer", (from, to, tokenId) => {
-        transferEvent(from, to, tokenId)
-    })
+const mintEvent = async (to, tokenId) => {
+    eventQueue.enqueue({ type: 'mint', to, tokenId });
+}
 
-    contract.on("Mint", (to, tokenId) => {
-        mintEvent(to, tokenId)
-    })
+contract.on("Transfer", (from, to, tokenId) => {
+    transferEvent(from, to, tokenId)
+})
 
-    setInterval(runEventQueue, 3000);
+contract.on("Mint", (to, tokenId) => {
+    mintEvent(to, tokenId)
+})
 
-    console.log(`Listening for events on contract ${BUTTS_CONTRACT_ADDRESS}...`)
+setInterval(runEventQueue, 3000);
+
+console.log(`Listening for events on contract ${BUTTS_CONTRACT_ADDRESS}...`)
