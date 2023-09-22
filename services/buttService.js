@@ -142,6 +142,7 @@ const processEvent = async (event) => {
         }
     } catch (err) {
         console.error(`Error processing event: ${JSON.stringify(event)}`);
+        console.error(`Error detail: ${err}`);
         throw err;
     }
 }
@@ -184,6 +185,7 @@ const runEventQueue = async () => {
 async function makeS3ObjectPublic(bucket, key) {
     let retries = 0;
     let retryDelay = INITIAL_RETRY_DELAY;
+    console.log(`Making S3 Object Public: Bucket - ${bucket}, Key - ${key}`);  // Log to identify the bucket and key
 
     while (retries < MAX_RETRIES) {
         try {
@@ -202,6 +204,7 @@ async function makeS3ObjectPublic(bucket, key) {
             retries++;
 
             if (retries >= MAX_RETRIES) {
+                console.error(`Max retries reached for bucket "${bucket}" and key "${key}", operation failed.`);
                 throw new Error(`Max retries reached for bucket "${bucket}" and key "${key}", operation failed.`);
             }
 
