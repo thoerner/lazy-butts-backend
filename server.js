@@ -14,7 +14,17 @@ const app = express()
 app.use(bodyParser.json())
 app.use(bodyParser.urlencoded({ extended: true }))
 app.use(helmet())
-app.use(cors())
+
+// Define CORS options
+const corsOptions = {
+    origin: ["https://butts.the3dkings.io", "https://api.the3dkings.io"], // Add your origins here
+    methods: "GET,HEAD,PUT,PATCH,POST,DELETE", // or any other HTTP methods you need
+    credentials: true,
+    optionsSuccessStatus: 204,
+};
+
+// Use CORS middleware with options
+app.use(cors(corsOptions));
 
 app.get("/", (req, res) => {
     res.send("Hello World!")
