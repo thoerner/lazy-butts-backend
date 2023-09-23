@@ -7,7 +7,7 @@ import authRoutes from "./routes/auth.js"
 import buttRoutes from "./routes/butts.js"
 import imageRoutes from "./routes/images.js"
 import metadataRoutes from "./routes/metadata.js"
-import "./services/buttService.js"
+// import "./services/buttService.js"
 
 const app = express()
 
