@@ -219,6 +219,27 @@ const mintEvent = async (to, tokenId) => {
     eventQueue.enqueue({ type: 'mint', to, tokenId });
 }
 
+function setupEventListeners() {
+    contract.on("Transfer", (from, to, tokenId) => {
+        transferEvent(from, to, tokenId);
+    });
+
+    contract.on("Mint", (to, tokenId) => {
+        mintEvent(to, tokenId);
+    });
+
+    console.log(`Set up event listeners for contract ${BUTTS_CONTRACT_ADDRESS}...`);
+}
+
+function refreshEventListeners() {
+    contract.removeAllListeners("Transfer");
+    contract.removeAllListeners("Mint");
+    
+    setupEventListeners();
+
+    console.log("Refreshed event listeners");
+}
+
 contract.on("Transfer", (from, to, tokenId) => {
     transferEvent(from, to, tokenId)
 })
@@ -228,5 +249,7 @@ contract.on("Mint", (to, tokenId) => {
 })
 
 setInterval(runEventQueue, 3000);
+
+setInterval(refreshEventListeners, 60 * 60 * 1000);
 
 console.log(`Listening for events on contract ${BUTTS_CONTRACT_ADDRESS}...`)
