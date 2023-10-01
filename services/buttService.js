@@ -295,6 +295,7 @@ function scheduleRefresh() {
 }
 
 // Initially start the scheduling
+refreshEventListeners();
 scheduleRefresh();
 
 setInterval(runEventQueue, 3000);
