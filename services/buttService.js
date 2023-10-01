@@ -214,7 +214,6 @@ async function makeS3ObjectPublic(bucket, key) {
     }
 }
 
-
 const mintEvent = async (to, tokenId) => {
     eventQueue.enqueue({ type: 'mint', to, tokenId });
 }
@@ -231,13 +230,20 @@ function setupEventListeners() {
     console.log(`Set up event listeners for contract ${BUTTS_CONTRACT_ADDRESS}...`);
 }
 
-function refreshEventListeners() {
-    contract.removeAllListeners("Transfer");
-    contract.removeAllListeners("Mint");
-    
-    setupEventListeners();
+async function refreshEventListeners() {
+    return new Promise((resolve, reject) => {
+        contract.removeAllListeners("Transfer");
+        contract.removeAllListeners("Mint");
 
-    console.log("Refreshed event listeners");
+        resolve();
+    })
+    .then(() => {
+        setupEventListeners();
+        console.log("Refreshed event listeners");
+    })
+    .catch((err) => {
+        console.error("Error refreshing event listeners:", err);
+    });
 }
 
 contract.on("Transfer", (from, to, tokenId) => {
@@ -248,8 +254,49 @@ contract.on("Mint", (to, tokenId) => {
     mintEvent(to, tokenId)
 })
 
-setInterval(runEventQueue, 3000);
 
-setInterval(refreshEventListeners, 60 * 60 * 1000);
+function getNext3AMETMillis() {
+    const now = new Date();
+    const next3AM = new Date(now);
+    
+    // Set the time to 3AM
+    next3AM.setHours(3, 0, 0, 0);
+    
+    // If it's already past 3AM, set the date to the next day
+    if (now > next3AM) {
+        next3AM.setDate(next3AM.getDate() + 1);
+    }
+
+    // Convert Eastern Time to UTC, considering Daylight Saving Time
+    const isDST = (function() {
+        const jan = new Date(now.getFullYear(), 0, 1).getTimezoneOffset();
+        const jul = new Date(now.getFullYear(), 6, 1).getTimezoneOffset();
+        return Math.max(jan, jul) !== now.getTimezoneOffset();
+    })();
+    
+    if (isDST) {
+        next3AM.setHours(next3AM.getHours() + 4); // EDT is UTC-4
+    } else {
+        next3AM.setHours(next3AM.getHours() + 5); // EST is UTC-5
+    }
+    
+    return next3AM - now;
+}
+
+function scheduleRefresh() {
+    const millisTillNext3AM = getNext3AMETMillis();
+    
+    setTimeout(() => {
+        refreshEventListeners();
+        
+        // Schedule the next refresh
+        scheduleRefresh();
+    }, millisTillNext3AM);
+}
+
+// Initially start the scheduling
+scheduleRefresh();
+
+setInterval(runEventQueue, 3000);
 
 console.log(`Listening for events on contract ${BUTTS_CONTRACT_ADDRESS}...`)
