@@ -1,6 +1,7 @@
 import provider from "./ethService.js"
 import db, { GetItemCommand, PutItemCommand, UpdateItemCommand } from "./dbService.js"
 import s3, { PutObjectAclCommand } from "./s3Service.js"
+import { createImages } from "./imageCreation.js"
 import { Contract, ZeroAddress } from "ethers"
 import LazyButtsAbi from "../contracts/LazyButts.json" assert { type: "json" }
 
@@ -136,9 +137,15 @@ const processEvent = async (event) => {
             }
 
             const command = new UpdateItemCommand(params)
-
             const data = await db.send(command)
             console.log(`Updated mintedTokens in config table`)
+
+            // create images
+            try {
+                await createImages(tokenId)
+            } catch (err) {
+                console.error(`Error creating images: ${err}`)
+            }
         }
     } catch (err) {
         console.error(`Error processing event: ${JSON.stringify(event)}`);
