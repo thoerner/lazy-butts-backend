@@ -17,13 +17,14 @@ app.use(helmet());
 
 // Define CORS options
 const corsOptions = {
-  origin: [
-    "https://butts.the3dkings.io", 
-    "https://api.the3dkings.io", 
-    "http://localhost:3000"],
-  methods: "GET,HEAD,PUT,PATCH,POST,DELETE",
-  credentials: true,
-  optionsSuccessStatus: 204,
+    origin: [
+        "https://butts.the3dkings.io", 
+        "https://api.the3dkings.io",
+        "http://localhost:3000",
+    ],
+    methods: "GET,HEAD,PUT,PATCH,POST,DELETE", // or any other HTTP methods you need
+    credentials: true,
+    optionsSuccessStatus: 204,
 };
 
 // Use CORS middleware with options
