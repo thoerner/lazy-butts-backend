@@ -10,6 +10,7 @@ const SEASONAL_KEY = 'public/images/seasonal/'
 const FULL_BODY_THUMB_KEY = 'public/images/small-full-lions/'
 const SMALL_BUTT_KEY = 'public/images/small-lazy-butts/'
 const MEDIUM_BUTT_KEY = 'public/images/medium-lazy-butts/'
+const TRANSPARENT_KEY = 'public/images/full-transparent/'
 
 export const getButt = async (req, res) => {
     const { imageName } = req.params
@@ -55,6 +56,20 @@ export const getFullBody = async (req, res) => {
         await verifySessionAuth(address, authorization)
         await authorizeButtAccess(address, imageName)
         getAndReturnImageFromS3(`${FULL_BODY_KEY}${imageName}`, res)
+    } catch (error) {
+        console.error('An error occurred:', error);
+        return res.status(401).json({ error: error })
+    }
+}
+
+export const getTransparent = async (req, res) => {
+    const { imageName } = req.params
+    const { authorization, address } = req.headers
+
+    try {
+        await verifySessionAuth(address, authorization)
+        await authorizeButtAccess(address, imageName)
+        getAndReturnImageFromS3(`${TRANSPARENT_KEY}${imageName}`, res)
     } catch (error) {
         console.error('An error occurred:', error);
         return res.status(401).json({ error: error })
