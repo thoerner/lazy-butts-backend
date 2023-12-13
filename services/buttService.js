@@ -141,11 +141,11 @@ const processEvent = async (event) => {
             console.log(`Updated mintedTokens in config table`)
 
             // create images
-            try {
-                await createImages(tokenId)
-            } catch (err) {
-                console.error(`Error creating images: ${err}`)
-            }
+            // try {
+            //     await createImages(tokenId)
+            // } catch (err) {
+            //     console.error(`Error creating images: ${err}`)
+            // }
         }
     } catch (err) {
         console.error(`Error processing event: ${JSON.stringify(event)}`);
