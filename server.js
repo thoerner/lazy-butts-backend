@@ -23,6 +23,7 @@ const corsOptions = {
         "https://test-butts.the3dkings.io",
         "https://trans-test.the3dkings.io",
         "http://localhost:3000",
+        "http://localhost:5173",
     ],
     methods: "GET,HEAD,PUT,PATCH,POST,DELETE", // or any other HTTP methods you need
     credentials: true,
