@@ -1,0 +1,28 @@
+{
+	"name": "#9909",
+	"description": "Lazy Butts",
+	"external_url": "https://lazybutts.3dkings.io/",
+	"image": "https://lazybutts.3dkings.io/images/9909.png",
+	"attributes": [
+		{
+			"trait_type": "Butt Background",
+			"value": "Khakhi"
+		},
+		{
+			"trait_type": "Butt",
+			"value": "Standard Butt"
+		},
+		{
+			"trait_type": "Bodygear Bottom",
+			"value": "Ethereum Bottom"
+		},
+		{
+			"trait_type": "Accessories",
+			"value": "Binoculars and Field Guide"
+		},
+		{
+			"trait_type": "Tail Tuft",
+			"value": "Rainbow"
+		}
+	]
+}

@@ -7,6 +7,7 @@ import authRoutes from "./routes/auth.js";
 import buttRoutes from "./routes/butts.js";
 import imageRoutes from "./routes/images.js";
 import metadataRoutes from "./routes/metadata.js";
+import createRoutes from "./routes/create.js";
 // import "./services/buttService.js"
 
 const app = express();
@@ -42,6 +43,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/butts", buttRoutes);
 app.use("/api/images", imageRoutes);
 app.use("/api/metadata", metadataRoutes);
+app.use("/api/create", createRoutes);
 
 app.listen(3000, () => {
   console.log("Server is listening on port 3000");

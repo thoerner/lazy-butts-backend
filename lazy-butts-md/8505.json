@@ -1,0 +1,28 @@
+{
+	"name": "#8505",
+	"description": "Lazy Butts",
+	"external_url": "https://lazybutts.3dkings.io/",
+	"image": "https://lazybutts.3dkings.io/images/8505.png",
+	"attributes": [
+		{
+			"trait_type": "Butt Background",
+			"value": "Copper"
+		},
+		{
+			"trait_type": "Butt",
+			"value": "Zombie Butt"
+		},
+		{
+			"trait_type": "Bodygear Bottom",
+			"value": "Lion Pants"
+		},
+		{
+			"trait_type": "Accessories",
+			"value": "Baton and Flashlight"
+		},
+		{
+			"trait_type": "Tail Tuft",
+			"value": "Brown"
+		}
+	]
+}
