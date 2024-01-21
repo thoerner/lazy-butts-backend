@@ -150,96 +150,81 @@ async function getTransparentImageFromS3(tokenId) {
 export const createRexRoar = async (req, res) => {
   const { tokenId } = req.params;
 
-  const transparentImage = await getTransparentImageFromS3(tokenId);
-  if (!transparentImage.success) {
-    return res.status(400).json({ error: transparentImage.message });
+  let pathToTransparentImage;
+
+  try {
+    const transparentImage = await getTransparentImageFromS3(tokenId);
+    if (!transparentImage.success) {
+      return res.status(400).json({ error: transparentImage.message });
+    }
+
+    pathToTransparentImage = transparentImage.path; // 5000x1000
+    const pathToBackgroundImage = path.join(rexDir, "background.png"); // 3800x2400
+    const pathToForegroundImage = path.join(rexDir, "foreground.png"); // 3800x2400
+
+    const transparentImageBuffer = await fsPromises.readFile(
+      pathToTransparentImage
+    );
+    const targetWidth = 3800;
+    const targetHeight = 2400;
+    const offset = 2900;
+    const scaleFactor = 0.75;
+
+    const resizedWidth = Math.floor(offset * scaleFactor);
+    const resizedHeight = Math.floor(offset * scaleFactor);
+
+    const transparentImageResizedBuffer = await sharp(transparentImageBuffer)
+      .resize(resizedWidth, resizedHeight, {
+        fit: "contain",
+        background: { r: 0, g: 0, b: 0, alpha: 0 },
+      })
+      .extend({
+        top: Math.floor((targetHeight - resizedHeight) / 2),
+        bottom: Math.floor((targetHeight - resizedHeight) / 2),
+        left: 0,
+        right: targetWidth - offset,
+        background: { r: 0, g: 0, b: 0, alpha: 0 },
+      })
+      .png()
+      .toBuffer();
+
+    // Read the background and foreground images into buffers
+    const backgroundImageBuffer = await fsPromises.readFile(
+      pathToBackgroundImage
+    );
+    const foregroundImageBuffer = await fsPromises.readFile(
+      pathToForegroundImage
+    );
+
+    // Combine images with sharp directly using buffers
+    const combinedImageBuffer = await sharp(backgroundImageBuffer)
+      .composite([
+        { input: transparentImageResizedBuffer, blend: "over" },
+        { input: foregroundImageBuffer, blend: "over" },
+      ])
+      .png()
+      .toBuffer();
+
+    // Set headers to display image in the browser or Postman
+    res.writeHead(200, {
+      "Content-Type": "image/png",
+      "Content-Length": combinedImageBuffer.length,
+    });
+
+    // Send the image buffer and end the response
+    res.end(combinedImageBuffer);
+  } catch (error) {
+    console.error("An error occurred:", error);
+    return res.status(400).json({ error: error });
+  } finally {
+    // Delete temporary files
+    if (pathToTransparentImage) {
+      fsPromises
+        .unlink(pathToTransparentImage)
+        .then(() => console.log(`Deleted ${pathToTransparentImage}`))
+        .catch((err) =>
+          console.error(`Error deleting ${pathToTransparentImage}: ${err}`)
+        );
+    }
   }
-
-  const pathToTransparentImage = transparentImage.path; // 5000x1000
-  const pathToBackgroundImage = path.join(rexDir, "background.png"); // 3800x2400
-  const pathToForegroundImage = path.join(rexDir, "foreground.png"); // 3800x2400
-
-  // Use sharp to combine images in order: background, transparent, foreground
-
-  // resize transparent image to 3800x2400 by adding transparent padding
-  const transparentImageBuffer = await fsPromises.readFile(
-    pathToTransparentImage
-  );
-
-  const targetWidth = 3800;
-  const targetHeight = 2400;
-  const offset = 2900;
-  const scaleFactor = 0.75; // Scale down by 25%
-
-  const resizedWidth = Math.floor(offset * scaleFactor); // 80% of the first third of the width
-  const resizedHeight = Math.floor(offset * scaleFactor); // 80% of the height
-
-  const transparentImageResizedBuffer = await sharp(transparentImageBuffer)
-    .resize(resizedWidth, resizedHeight, {
-      // First, resize the image to 80% of its size
-      fit: "contain",
-      background: { r: 0, g: 0, b: 0, alpha: 0 },
-    })
-    .extend({
-      // Then add padding to position the resized image in the first third
-      top: Math.floor((targetHeight - resizedHeight) / 2), // Center vertically
-      bottom: Math.floor((targetHeight - resizedHeight) / 2), // Center vertically
-      left: 0,
-      right: targetWidth - offset, // Padding size equals the rest of the space after the first third
-      background: { r: 0, g: 0, b: 0, alpha: 0 },
-    })
-    .png()
-    .toBuffer();
-
-  const pathToTransparentImageResized = path.join(
-    outputDir,
-    "temp",
-    `${tokenId}-resized.png`
-  );
-
-  await fsPromises.writeFile(
-    pathToTransparentImageResized,
-    transparentImageResizedBuffer
-  );
-
-  // Read the background and foreground images into buffers
-  const backgroundImageBuffer = await fsPromises.readFile(
-    pathToBackgroundImage
-  );
-  const foregroundImageBuffer = await fsPromises.readFile(
-    pathToForegroundImage
-  );
-
-  // Combine images with sharp
-  const combinedImageBuffer = await sharp(backgroundImageBuffer)
-    .composite([
-      {
-        input: transparentImageResizedBuffer,
-        blend: "over",
-      },
-      {
-        input: foregroundImageBuffer,
-        blend: "over",
-      },
-    ])
-    .png()
-    .toBuffer();
-
-  const pathToCombinedImage = path.join(
-    outputDir,
-    "temp",
-    `${tokenId}-combined.png`
-  );
-
-  // write combined image to file
-  await fsPromises.writeFile(pathToCombinedImage, combinedImageBuffer);
-
-  // Set headers to display image in the browser or Postman
-  res.writeHead(200, {
-    "Content-Type": "image/png",
-    "Content-Length": combinedImageBuffer.length,
-  });
-
-  // Send the image buffer and end the response
-  res.end(combinedImageBuffer);
 };
