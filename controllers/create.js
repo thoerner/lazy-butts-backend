@@ -9,7 +9,10 @@ import { fileURLToPath } from "url";
 import makeButtNoBG from "../utils/makeButtNoBackground.js";
 import combineImages from "../utils/combineTransparent.js";
 import makeSeasonalImage from "../utils/createSeasonalImage.js";
-import s3, { GetObjectCommand } from "../services/s3Service.js";
+import s3, {
+  GetObjectCommand,
+  GetObjectAclCommand,
+} from "../services/s3Service.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const projectRoot = path.resolve(__dirname, "..");
@@ -36,15 +39,77 @@ async function resizeImage(imageBuffer, width, height) {
 }
 
 // get metadata from https://metadata.lazylionsnft.com/api/lazylions/{tokenId}
-async function getMetadata(tokenId) {
+async function getLazyLionsMetadata(tokenId) {
   const url = `https://metadata.lazylionsnft.com/api/lazylions/${tokenId}`;
   const response = await axios.get(url);
   return response.data;
 }
 
+// Helper function to convert a stream to JSON
+function streamToJson(stream) {
+  return new Promise((resolve, reject) => {
+    let rawData = "";
+    stream.on("data", (chunk) => (rawData += chunk));
+    stream.on("error", reject);
+    stream.on("end", () => {
+      try {
+        const jsonData = JSON.parse(rawData);
+        resolve(jsonData);
+      } catch (e) {
+        reject(e);
+      }
+    });
+  });
+}
+
+async function getPublicMetadataFromS3(key) {
+  // Define S3 bucket name
+  const bucketName = "lazybutts";
+
+  // Set up parameters for checking the ACL (Access Control List)
+  const aclParams = {
+    Bucket: bucketName,
+    Key: key,
+  };
+
+  // Create a command to get the ACL for the object
+  const aclCommand = new GetObjectAclCommand(aclParams);
+
+  try {
+    // Send command to get the ACL for the object
+    const aclData = await s3.send(aclCommand);
+    // Check if the object is publicly readable
+    const Grantee = aclData.Grants.find(
+      (grant) =>
+        grant.Grantee.URI === "http://acs.amazonaws.com/groups/global/AllUsers"
+    );
+    if (!(Grantee && Grantee.Permission === "READ")) {
+      throw new Error("You are not authorized to view this metadata");
+    }
+
+    // Set up parameters to get the object
+    const params = {
+      Bucket: bucketName,
+      Key: key,
+    };
+
+    // Create a command to get the object
+    const command = new GetObjectCommand(params);
+
+    // Send command to get the object
+    const data = await s3.send(command);
+
+    // Read and parse the object body to JSON directly from the stream
+    return streamToJson(data.Body);
+  } catch (error) {
+    console.log("Caught an error:", error.message);
+    throw error;
+  }
+}
+
 const createTransparentTop = async (tokenId) => {
   // get metadata
-  const metadata = await getMetadata(tokenId);
+  const metadata = await getLazyLionsMetadata(tokenId);
   const cid = metadata.image.split("ipfs://")[1];
 
   // download image
@@ -147,6 +212,124 @@ async function getTransparentImageFromS3(tokenId) {
   }
 }
 
+export const createValentine = async (req, res) => {
+  const { tokenId } = req.params;
+
+  console.log(`Creating Valentine image for token #${tokenId}`);
+
+  let metadata;
+
+  try {
+    metadata = await getPublicMetadataFromS3(`public/metadata/${tokenId}.json`);
+  } catch (error) {
+    console.error("An error occurred:", error);
+    return res.status(400).json({ error: error });
+  }
+
+  let backgroundColor = metadata.attributes.find(
+    (attribute) => attribute.trait_type === "Butt Background"
+  ).value;
+
+  let pathToTransparentImage;
+
+  let valentinesDir = path.join(layersDir, "Valentines");
+
+  try {
+    const transparentImage = await getTransparentImageFromS3(tokenId);
+    if (!transparentImage.success) {
+      return res.status(400).json({ error: transparentImage.message });
+    }
+
+    pathToTransparentImage = transparentImage.path; // 5000x10000
+
+    const pathToBackgroundImage = path.join(
+      valentinesDir,
+      "backgrounds",
+      `${backgroundColor}.png`
+    ); // 2000x2000
+
+    const pathToForegroundImage = path.join(valentinesDir, "foreground.png"); // 2000x2000
+
+    const transparentImageBuffer = await fsPromises.readFile(
+      pathToTransparentImage
+    );
+
+    const targetWidth = 2000;
+    const targetHeight = 2000;
+
+    const resizedWidth = Math.floor(targetWidth * 0.75);
+    const resizedHeight = Math.floor(targetHeight * 0.75);
+
+    const transparentImageResizedBuffer = await sharp(transparentImageBuffer)
+      .resize(resizedWidth, resizedHeight, {
+        fit: "contain",
+        background: { r: 0, g: 0, b: 0, alpha: 0 },
+      })
+      .extend({
+        top: Math.floor((targetHeight - resizedHeight) / 2),
+        bottom: Math.floor((targetHeight - resizedHeight) / 2),
+        left: Math.floor((targetWidth - resizedWidth) / 2), // Centered horizontally
+        right: Math.floor((targetWidth - resizedWidth) / 2), // Centered horizontally
+        background: { r: 0, g: 0, b: 0, alpha: 0 },
+      })
+      .png()
+      .toBuffer();
+
+    const countOfMessages = await fsPromises.readdir(
+      path.join(valentinesDir, "messages")
+    );
+
+    const randomMessageId = Math.floor(Math.random() * countOfMessages.length);
+
+    const messageLayer = await fsPromises.readFile(
+      path.join(valentinesDir, "messages", `${randomMessageId}.png`)
+    );
+
+    // Read the background and foreground images into buffers
+
+    const backgroundImageBuffer = await fsPromises.readFile(
+      pathToBackgroundImage
+    );
+
+    const foregroundImageBuffer = await fsPromises.readFile(
+      pathToForegroundImage
+    );
+
+    // Combine images with sharp directly using buffers
+    const combinedImageBuffer = await sharp(backgroundImageBuffer)
+      .composite([
+        { input: transparentImageResizedBuffer, blend: "over" },
+        { input: foregroundImageBuffer, blend: "over" },
+        { input: messageLayer, blend: "over" },
+      ])
+      .png()
+      .toBuffer();
+
+    // Set headers to display image in the browser or Postman
+    res.writeHead(200, {
+      "Content-Type": "image/png",
+      "Content-Length": combinedImageBuffer.length,
+    });
+
+    // Send the image buffer and end the response
+    res.end(combinedImageBuffer);
+
+    // Delete temporary files
+
+    fsPromises
+      .unlink(pathToTransparentImage)
+      .then(() => {
+        console.log(`Deleted ${pathToTransparentImage}`);
+      })
+      .catch((err) =>
+        console.error(`Error deleting ${pathToTransparentImage}: ${err}`)
+      );
+  } catch (error) {
+    console.error("An error occurred:", error);
+    return res.status(400).json({ error: error });
+  }
+};
+
 export const createRexRoar = async (req, res) => {
   const { tokenId } = req.params;
 
@@ -158,7 +341,7 @@ export const createRexRoar = async (req, res) => {
       return res.status(400).json({ error: transparentImage.message });
     }
 
-    pathToTransparentImage = transparentImage.path; // 5000x1000
+    pathToTransparentImage = transparentImage.path; // 5000x10000
     const pathToBackgroundImage = path.join(rexDir, "background.png"); // 3800x2400
     const pathToForegroundImage = path.join(rexDir, "foreground.png"); // 3800x2400
 
