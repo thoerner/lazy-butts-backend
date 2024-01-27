@@ -258,8 +258,8 @@ export const createValentine = async (req, res) => {
     const targetWidth = 2000;
     const targetHeight = 2000;
 
-    const resizedWidth = Math.floor(targetWidth * 0.75);
-    const resizedHeight = Math.floor(targetHeight * 0.75);
+    const resizedWidth = Math.floor(targetWidth * 1);
+    const resizedHeight = Math.floor(targetHeight * 1);
 
     const transparentImageResizedBuffer = await sharp(transparentImageBuffer)
       .resize(resizedWidth, resizedHeight, {
