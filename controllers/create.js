@@ -279,6 +279,8 @@ export const createValentine = async (req, res) => {
       path.join(valentinesDir, "messages")
     );
 
+    console.log("countOfMessages:", countOfMessages.length);
+
     const randomMessageId = Math.floor(Math.random() * countOfMessages.length);
 
     const messageLayer = await fsPromises.readFile(
