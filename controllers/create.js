@@ -13,6 +13,7 @@ import s3, {
   GetObjectCommand,
   GetObjectAclCommand,
 } from "../services/s3Service.js";
+import { type } from "os";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const projectRoot = path.resolve(__dirname, "..");
@@ -223,7 +224,7 @@ export const createValentine = async (req, res) => {
     metadata = await getPublicMetadataFromS3(`public/metadata/${tokenId}.json`);
   } catch (error) {
     console.error("An error occurred:", error);
-    return res.status(400).json({ error: error });
+    return res.status(400).json({ error: "Metadata for this token is unavailable" });
   }
 
   let backgroundColor = metadata.attributes.find(
