@@ -23,6 +23,7 @@ const transparentDir = path.join(outputDir, "transparentTop");
 const layersDir = path.join(projectRoot, "layers");
 const rexDir = path.join(layersDir, "RexRoar");
 
+const ENV = process.env.ENV;
 const REMOVEBG_API_KEY = process.env.REMOVEBG_API_KEY;
 
 async function resizeImage(imageBuffer, width, height) {
@@ -53,9 +54,33 @@ function streamToJson(stream) {
   });
 }
 
+async function getMetadataFromS3(key) {
+  // Define S3 bucket name
+  const bucketName = "lazybutts";
+
+  const params = {
+    Bucket: bucketName,
+    Key: key,
+  };
+
+  const command = new GetObjectCommand(params);
+
+  try {
+    const data = await s3.send(command);
+    return streamToJson(data.Body);
+  } catch (error) {
+    console.log("An error occurred:", error);
+    throw error;
+  }
+}
+
 async function getPublicMetadataFromS3(key) {
   // Define S3 bucket name
   const bucketName = "lazybutts";
+
+  if (ENV === "dev") {
+    return await getMetadataFromS3(key);
+  }
 
   // Set up parameters for checking the ACL (Access Control List)
   const aclParams = {

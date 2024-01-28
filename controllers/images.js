@@ -16,6 +16,8 @@ const SMALL_BUTT_KEY = "public/images/small-lazy-butts/";
 const MEDIUM_BUTT_KEY = "public/images/medium-lazy-butts/";
 const TRANSPARENT_KEY = "public/images/full-transparent/";
 
+const ENV = process.env.ENV;
+
 export const getCubImage = async (req, res) => {
   const { tokenId } = req.params;
 
@@ -55,6 +57,11 @@ export const getButt = async (req, res) => {
 
 export const getSmallButt = async (req, res) => {
   const { imageName } = req.params;
+
+  if (ENV === "dev") {
+    getAndReturnImageFromS3(`${SMALL_BUTT_KEY}${imageName}`, res);
+    return;
+  }
 
   try {
     getAndReturnImageFromS3Public(`${SMALL_BUTT_KEY}${imageName}`, res);
