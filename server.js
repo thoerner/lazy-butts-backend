@@ -24,6 +24,7 @@ const corsOptions = {
         "https://test-butts.the3dkings.io",
         "https://rex-test.the3dkings.io",
         "https://trans-test.the3dkings.io",
+        "https://valentines.the3dkings.io",
         "http://localhost:3000",
         "http://localhost:5173",
     ],
