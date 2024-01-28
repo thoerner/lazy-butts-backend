@@ -1,4 +1,3 @@
-import { create } from "ipfs-http-client";
 import axios from "axios";
 import FormData from "form-data";
 import fs from "fs";
@@ -9,11 +8,12 @@ import { fileURLToPath } from "url";
 import makeButtNoBG from "../utils/makeButtNoBackground.js";
 import combineImages from "../utils/combineTransparent.js";
 import makeSeasonalImage from "../utils/createSeasonalImage.js";
+import { downloadFile } from "../utils/ipfsUtils.js";
 import s3, {
   GetObjectCommand,
   GetObjectAclCommand,
 } from "../services/s3Service.js";
-import { type } from "os";
+import { getTokenMetadata } from "../utils/cubMetadata.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const projectRoot = path.resolve(__dirname, "..");
@@ -24,16 +24,6 @@ const layersDir = path.join(projectRoot, "layers");
 const rexDir = path.join(layersDir, "RexRoar");
 
 const REMOVEBG_API_KEY = process.env.REMOVEBG_API_KEY;
-
-const ipfs = create("http://localhost:5001");
-
-async function downloadFile(cid) {
-  const chunks = [];
-  for await (const chunk of ipfs.cat(cid)) {
-    chunks.push(chunk);
-  }
-  return Buffer.concat(chunks);
-}
 
 async function resizeImage(imageBuffer, width, height) {
   return await sharp(imageBuffer).resize(width, height).png().toBuffer();
@@ -224,7 +214,9 @@ export const createValentine = async (req, res) => {
     metadata = await getPublicMetadataFromS3(`public/metadata/${tokenId}.json`);
   } catch (error) {
     console.error("An error occurred:", error);
-    return res.status(400).json({ error: "Metadata for this token is unavailable" });
+    return res
+      .status(400)
+      .json({ error: "Metadata for this token is unavailable" });
   }
 
   let backgroundColor = metadata.attributes.find(
@@ -331,6 +323,117 @@ export const createValentine = async (req, res) => {
     console.error("An error occurred:", error);
     return res.status(400).json({ error: error });
   }
+};
+
+export const createValentineCub = async (req, res) => {
+  const { tokenId } = req.params;
+
+  console.log(`Creating Valentine Cub image for token #${tokenId}`);
+
+  let metadata;
+
+  try {
+    metadata = await getTokenMetadata(tokenId);
+  } catch (error) {
+    console.error("An error occurred:", error);
+    return res
+      .status(400)
+      .json({ error: "Metadata for this token is unavailable" });
+  }
+
+  console.log("metadata:", metadata);
+
+  let valentinesDir = path.join(layersDir, "Valentines");
+
+  let backgroundColor = metadata.metadata.attributes.find(
+    (attribute) => attribute.trait_type === "Background"
+  ).value;
+
+  let age = metadata.metadata.attributes.find(
+    (attribute) => attribute.trait_type === "Age"
+  ).value;
+
+  let imageCid = metadata.metadata.image.split("ipfs://")[1];
+
+  const size = 1100;
+
+  // download image
+  const imageBuffer = await downloadFile(imageCid);
+  const resizedImageBuffer = await resizeImage(imageBuffer, size, size);
+
+  const pathToBackgroundColor = path.join(
+    layersDir,
+    "Butt Background",
+    `${backgroundColor}.png`
+  )
+
+  const backgroundColorBuffer = await fsPromises.readFile(
+    pathToBackgroundColor
+  );
+  const resizedBackgroundColorBuffer = await resizeImage(
+    backgroundColorBuffer,
+    2000,
+    2000
+  );
+
+  const pathToBackgroundImage = path.join(
+    valentinesDir,
+    "backgrounds",
+    `${backgroundColor}.png`
+  ); // 2000x2000
+
+  const pathToForegroundImage = path.join(
+    valentinesDir,
+    "cub-foreground.png"
+  ); // 2000x2000
+
+  // layer image on top of background, then foreground on top of that
+  const backgroundImageBuffer = await fsPromises.readFile(
+    pathToBackgroundImage
+  );
+
+  const foregroundImageBuffer = await fsPromises.readFile(
+    pathToForegroundImage
+  );
+
+  const countOfMessages = await fsPromises.readdir(
+    path.join(valentinesDir, "messages")
+  );
+
+  console.log("countOfMessages:", countOfMessages.length);
+
+  const randomMessageId = Math.floor(Math.random() * countOfMessages.length);
+
+  const messageLayer = await fsPromises.readFile(
+    path.join(valentinesDir, "messages", `${randomMessageId}.png`)
+  );
+
+  const combinedImageBuffer = await sharp(backgroundImageBuffer)
+    .composite([
+      { 
+        input: resizedBackgroundColorBuffer, 
+        blend: "over"
+      },
+      { 
+        input: resizedImageBuffer, 
+        blend: "over",
+        top: ((2000-size)/2) + (age === "Young" ? -100 : -50),
+        left: (2000-size)/2,
+      },
+      { input: foregroundImageBuffer, blend: "over" },
+      { input: messageLayer, blend: "over" },
+    ])
+    .png()
+    .toBuffer();
+
+  // Set headers to display image in the browser or Postman
+  res.writeHead(200, {
+    "Content-Type": "image/png",
+    "Content-Length": combinedImageBuffer.length,
+  });
+
+  // Send the image buffer and end the response
+  res.end(combinedImageBuffer);
 };
 
 export const createRexRoar = async (req, res) => {

@@ -9,6 +9,7 @@ import {
   getSocial,
   getSeasonal,
   getTransparent,
+  getCubImage,
 } from "../controllers/images.js";
 
 const router = express.Router();
@@ -100,6 +101,11 @@ router.get(
     check("imageName", "Invalid image format.").custom(validateImageExtension),
   ],
   getSeasonal
+);
+router.get(
+  "/cub/:tokenId",
+  [check("tokenId", "Invalid tokenId.").isInt()],
+  getCubImage
 );
 
 export default router;

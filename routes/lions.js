@@ -1,6 +1,6 @@
 import express from "express"
 import { check } from "express-validator"
-import { getLions } from "../controllers/lions.js"
+import { getLions, getCubs } from "../controllers/lions.js"
 
 const router = express.Router()
 
@@ -13,5 +13,11 @@ router.get("/:address",
         check("address", "Address is invalid").custom(validateAddressFormat)
     ],
 getLions)
+
+router.get("/cubs/:address", 
+    [
+        check("address", "Address is invalid").custom(validateAddressFormat)
+    ],
+getCubs)
 
 export default router

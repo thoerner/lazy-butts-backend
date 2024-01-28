@@ -2,6 +2,7 @@ import { ethers } from 'ethers'
 import { validationResult } from 'express-validator'
 import ethProvider from '../services/ethService.js'
 import LazyLions from '../contracts/LazyLions.json' assert { type: "json" }
+import { getTokenData } from "../utils/cubMetadata.js"
 
 const LION_CONTRACT_ADDRESS = process.env.ENV === 'dev' ? process.env.LION_CONTRACT_ADDRESS_TEST : process.env.LION_CONTRACT_ADDRESS
 
@@ -15,4 +16,11 @@ export const getLions = async (req, res) => {
     const lions = await lionContract.tokensOfOwner(address)
     const lionIds = lions.map(lion => lion.toString())
     res.json(lionIds)
+}
+
+export const getCubs = async (req, res) => {
+    const { address } = req.params
+    console.log(`Getting cubs for ${address}`)
+    const cubs = await getTokenData(address)
+    res.json(cubs)
 }
