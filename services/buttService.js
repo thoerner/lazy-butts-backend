@@ -149,7 +149,7 @@ const processEvent = async (event) => {
       };
 
       const command = new UpdateItemCommand(params);
-      const data = await db.send(command);
+      await db.send(command);
       console.log(`Updated mintedTokens in config table`);
 
       // create images
@@ -220,7 +220,7 @@ async function makeS3ObjectPublic(bucket, key) {
         ACL: "public-read",
       };
       const command = new PutObjectAclCommand(params);
-      const data = await s3.send(command);
+      await s3.send(command);
 
       console.log("Successfully made the object public");
       return; // Successfully done
@@ -267,72 +267,51 @@ function setupEventListeners() {
 }
 
 async function refreshEventListeners() {
-  return new Promise((resolve, reject) => {
+  try {
+    console.log("Starting to refresh event listeners...");
+
+    // Actually remove listeners
     contract.removeAllListeners("Transfer");
     contract.removeAllListeners("Mint");
+    console.log("Removed all event listeners.");
 
-    resolve();
-  })
-    .then(() => {
-      setupEventListeners();
-      console.log("Refreshed event listeners");
-    })
-    .catch((err) => {
-      console.error("Error refreshing event listeners:", err);
-    });
-}
+    // Check the listener count, should be 0 if all were removed
+    const listenerCount = await contract.listenerCount();
+    console.log(`Current listener count: ${listenerCount}`);
+    if (listenerCount > 0) {
+      console.error("Listeners were not removed properly!");
+    }
 
-contract.on("Transfer", (from, to, tokenId) => {
-  transferEvent(from, to, tokenId);
-});
+    // Re-setup the listeners
+    setupEventListeners();
+    console.log("Re-setup event listeners.");
 
-contract.on("Mint", (to, tokenId) => {
-  mintEvent(to, tokenId);
-});
-
-function getNext3AMETMillis() {
-  const now = new Date();
-  const next3AM = new Date(now);
-
-  // Set the time to 3AM
-  next3AM.setHours(3, 0, 0, 0);
-
-  // If it's already past 3AM, set the date to the next day
-  if (now > next3AM) {
-    next3AM.setDate(next3AM.getDate() + 1);
+    // Verify that listeners are added
+    const newListenerCount = await contract.listenerCount();
+    console.log(`New listener count: ${newListenerCount}`);
+    if (newListenerCount <= 0) {
+      console.error("Listeners were not added properly!");
+    }
+  } catch (error) {
+    console.error("Error during refreshing event listeners:", error);
   }
-
-  // Convert Eastern Time to UTC, considering Daylight Saving Time
-  const isDST = (function () {
-    const jan = new Date(now.getFullYear(), 0, 1).getTimezoneOffset();
-    const jul = new Date(now.getFullYear(), 6, 1).getTimezoneOffset();
-    return Math.max(jan, jul) !== now.getTimezoneOffset();
-  })();
-
-  if (isDST) {
-    next3AM.setHours(next3AM.getHours() + 4); // EDT is UTC-4
-  } else {
-    next3AM.setHours(next3AM.getHours() + 5); // EST is UTC-5
-  }
-
-  return next3AM - now;
 }
 
 function scheduleRefresh() {
-  const millisTillNext3AM = getNext3AMETMillis();
+  const REFRESH_INTERVAL = 3600000; // 1 hour
 
   setTimeout(() => {
+    console.log("Scheduling a refresh of event listeners...");
     refreshEventListeners();
-
-    // Schedule the next refresh
     scheduleRefresh();
-  }, millisTillNext3AM);
+  }, REFRESH_INTERVAL);
 }
 
 // Initially start the scheduling
-refreshEventListeners();
+setupEventListeners();
 scheduleRefresh();
 
+runEventQueue();
 setInterval(runEventQueue, 3000);
 
 console.log(`Listening for events on contract ${BUTTS_CONTRACT_ADDRESS}...`);
