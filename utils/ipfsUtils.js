@@ -9,3 +9,11 @@ export async function downloadFile(cid) {
   }
   return Buffer.concat(chunks);
 }
+
+export async function downloadJsonFile(cid) {
+  const chunks = [];
+  for await (const chunk of ipfs.cat(cid)) {
+      chunks.push(chunk);
+  }
+  return Buffer.concat(chunks).toString();
+}

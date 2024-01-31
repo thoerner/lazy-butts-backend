@@ -14,6 +14,8 @@ import s3, {
   GetObjectAclCommand,
 } from "../services/s3Service.js";
 import { getTokenMetadata } from "../utils/cubMetadata.js";
+import { getNFTMetadata } from "../utils/nftMetadata.js";
+import { LAZY_LIONS_ADDRESS } from "../utils/consts.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const projectRoot = path.resolve(__dirname, "..");
@@ -390,7 +392,7 @@ export const createValentineCub = async (req, res) => {
     layersDir,
     "Butt Background",
     `${backgroundColor}.png`
-  )
+  );
 
   const backgroundColorBuffer = await fsPromises.readFile(
     pathToBackgroundColor
@@ -407,10 +409,7 @@ export const createValentineCub = async (req, res) => {
     `${backgroundColor}.png`
   ); // 2000x2000
 
-  const pathToForegroundImage = path.join(
-    valentinesDir,
-    "cub-foreground.png"
-  ); // 2000x2000
+  const pathToForegroundImage = path.join(valentinesDir, "cub-foreground.png"); // 2000x2000
 
   // layer image on top of background, then foreground on top of that
   const backgroundImageBuffer = await fsPromises.readFile(
@@ -435,19 +434,69 @@ export const createValentineCub = async (req, res) => {
 
   const combinedImageBuffer = await sharp(backgroundImageBuffer)
     .composite([
-      { 
-        input: resizedBackgroundColorBuffer, 
-        blend: "over"
-      },
-      { 
-        input: resizedImageBuffer, 
+      {
+        input: resizedBackgroundColorBuffer,
         blend: "over",
-        top: ((2000-size)/2) + (age === "Young" ? -100 : -50),
-        left: (2000-size)/2,
+      },
+      {
+        input: resizedImageBuffer,
+        blend: "over",
+        top: (2000 - size) / 2 + (age === "Young" ? -100 : -50),
+        left: (2000 - size) / 2,
       },
       { input: foregroundImageBuffer, blend: "over" },
       { input: messageLayer, blend: "over" },
     ])
+    .png()
+    .toBuffer();
+
+  // Set headers to display image in the browser or Postman
+  res.writeHead(200, {
+    "Content-Type": "image/png",
+    "Content-Length": combinedImageBuffer.length,
+  });
+
+  // Send the image buffer and end the response
+  res.end(combinedImageBuffer);
+};
+
+export const createGm = async (req, res) => {
+  const { tokenId } = req.params;
+
+  console.log(`Creating GM image for token #${tokenId}`);
+
+  let metadata;
+
+  try {
+    metadata = await getNFTMetadata(tokenId, LAZY_LIONS_ADDRESS);
+  } catch (error) {
+    console.error("An error occurred:", error);
+    return res
+      .status(400)
+      .json({ error: "Metadata for this token is unavailable" });
+  }
+
+  const parsedMetadata = JSON.parse(metadata.metadata);
+
+  let body = parsedMetadata.attributes.find(
+    (attribute) => attribute.trait_type === "Body"
+  ).value;
+
+  let imageCid = parsedMetadata.image.split("ipfs://")[1];
+
+  const size = 2000;
+
+  // download image
+  const imageBuffer = await downloadFile(imageCid);
+  const baseLayerBuffer = await resizeImage(imageBuffer, size, size);
+
+  const pathToGmImage = path.join(layersDir, "GM", `${body}.png`);
+
+  const gmImageLayer = fs.readFileSync(pathToGmImage);
+  const resizedGmImageLayer = await resizeImage(gmImageLayer, size, size);
+
+  const combinedImageBuffer = await sharp(baseLayerBuffer)
+    .composite([{ input: resizedGmImageLayer, blend: "over" }])
     .png()
     .toBuffer();
 

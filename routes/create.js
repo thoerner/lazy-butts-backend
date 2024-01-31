@@ -4,6 +4,7 @@ import {
   createRexRoar,
   createValentine,
   createValentineCub,
+  createGm,
 } from "../controllers/create.js";
 
 const router = express.Router();
@@ -11,6 +12,11 @@ const router = express.Router();
 router.post(
   "/transparent/:tokenId",
   createTransparent
+);
+
+router.get(
+  "/gm/:tokenId",
+  createGm
 );
 
 router.get(
