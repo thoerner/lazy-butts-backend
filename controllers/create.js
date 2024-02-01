@@ -478,9 +478,15 @@ export const createGm = async (req, res) => {
 
   const parsedMetadata = JSON.parse(metadata.metadata);
 
-  let body = parsedMetadata.attributes.find(
+  let bodyAttribute = parsedMetadata.attributes.find(
     (attribute) => attribute.trait_type === "Body"
-  ).value;
+  );
+
+  if (!bodyAttribute) {
+    return res.status(404).send("Body attribute not found");
+  }
+
+  let body = bodyAttribute.value;
 
   let imageCid = parsedMetadata.image.split("ipfs://")[1];
 
