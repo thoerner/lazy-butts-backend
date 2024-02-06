@@ -152,18 +152,6 @@ const processEvent = async (event) => {
       await db.send(command);
       console.log(`Updated mintedTokens in config table`);
 
-      // create images
-      try {
-        const response = await axios({
-          method: "post",
-          url: `https://api.the3dkings.io/api/create/transparent/${tokenId}`,
-          headers: {
-            "Content-Type": "application/json",
-          },
-        });
-      } catch (err) {
-        console.error(`Error creating images: ${err}`);
-      }
     }
   } catch (err) {
     console.error(`Error processing event: ${JSON.stringify(event)}`);
