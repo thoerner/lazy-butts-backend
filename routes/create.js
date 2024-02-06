@@ -1,6 +1,5 @@
 import express from "express";
 import {
-  createTransparent,
   createRexRoar,
   createValentine,
   createValentineCub,
@@ -8,11 +7,6 @@ import {
 } from "../controllers/create.js";
 
 const router = express.Router();
-
-router.post(
-  "/transparent/:tokenId",
-  createTransparent
-);
 
 router.get(
   "/gm/:tokenId",
