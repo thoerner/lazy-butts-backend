@@ -4,13 +4,8 @@ import db, {
   PutItemCommand,
   UpdateItemCommand,
 } from "./dbService.js";
-import s3, { PutObjectAclCommand } from "./s3Service.js";
-import axios from "axios";
 import { Contract, ZeroAddress } from "ethers";
 import LazyButtsAbi from "../contracts/LazyButts.json" assert { type: "json" };
-
-const MAX_RETRIES = 3;
-const INITIAL_RETRY_DELAY = 1000;
 
 const BUTTS_CONTRACT_ADDRESS =
   process.env.ENV === "dev"
@@ -108,26 +103,6 @@ const processEvent = async (event) => {
       console.log(`Updated user data for ${to}`);
     } else if (type === "mint") {
       console.log(`Minted token ${tokenId} to ${to}`);
-      const bucket = process.env.BUCKET_NAME;
-      const mediumButtKey = `public/images/medium-lazy-butts/${tokenId}.png`;
-      const smallButtKey = `public/images/small-lazy-butts/${tokenId}.png`;
-      const metadataKey = `public/metadata/${tokenId}.json`;
-      try {
-        await makeS3ObjectPublic(bucket, mediumButtKey);
-      } catch (err) {
-        console.error(`Error making S3 object public: ${err}`);
-      }
-      try {
-        await makeS3ObjectPublic(bucket, smallButtKey);
-      } catch (err) {
-        console.error(`Error making S3 object public: ${err}`);
-      }
-      try {
-        await makeS3ObjectPublic(bucket, metadataKey);
-      } catch (err) {
-        console.error(`Error making S3 object public: ${err}`);
-      }
-      console.log(`Set ACLs for token ${tokenId}`);
 
       // update set of mintedTokens in config table
       const params = {
@@ -194,47 +169,6 @@ const runEventQueue = async () => {
     }
   }
 };
-
-async function makeS3ObjectPublic(bucket, key) {
-  let retries = 0;
-  let retryDelay = INITIAL_RETRY_DELAY;
-  console.log(`Making S3 Object Public: Bucket - ${bucket}, Key - ${key}`); // Log to identify the bucket and key
-
-  while (retries < MAX_RETRIES) {
-    try {
-      const params = {
-        Bucket: bucket,
-        Key: key,
-        ACL: "public-read",
-      };
-      const command = new PutObjectAclCommand(params);
-      await s3.send(command);
-
-      console.log("Successfully made the object public");
-      return; // Successfully done
-    } catch (error) {
-      console.error(
-        `Attempt ${
-          retries + 1
-        } for bucket "${bucket}" and key "${key}" failed:`,
-        error
-      );
-      retries++;
-
-      if (retries >= MAX_RETRIES) {
-        console.error(
-          `Max retries reached for bucket "${bucket}" and key "${key}", operation failed.`
-        );
-        throw new Error(
-          `Max retries reached for bucket "${bucket}" and key "${key}", operation failed.`
-        );
-      }
-
-      await new Promise((resolve) => setTimeout(resolve, retryDelay));
-      retryDelay *= 2; // Exponential backoff
-    }
-  }
-}
 
 const mintEvent = async (to, tokenId) => {
   eventQueue.enqueue({ type: "mint", to, tokenId });
