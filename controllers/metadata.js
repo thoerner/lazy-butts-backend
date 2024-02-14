@@ -4,30 +4,55 @@ import { Contract } from "ethers";
 
 const METADATA_KEY = "public/metadata/";
 
+export const getMetadataFunction = async (tokenId) => {
+  if (!(await doesButtExist(tokenId))) {
+    return { error: "This butt does not exist" };
+  }
+
+  try {
+    const response = await getMetadataFromS3(`${METADATA_KEY}${tokenId}.json`);
+
+    return new Promise((resolve, reject) => {
+      let rawData = "";
+      response.on("data", (chunk) => {
+        rawData += chunk;
+      });
+      response.on("end", () => {
+        try {
+          const metadata = JSON.parse(rawData);
+          resolve(metadata);
+        } catch (e) {
+          reject({ error: "Failed to parse JSON" });
+        }
+      });
+    });
+  } catch (error) {
+    return {
+      error: error.message || "An error occurred while fetching metadata",
+    };
+  }
+};
+
 export const getMetadata = async (req, res) => {
   const { id } = req.params;
+  let tokenID = id.split(".")[0]; // Assuming the token ID is the part of the request parameter before any '.'
 
-  let tokenId = id.split(".")[0];
-
-  if (!(await doesButtExist(tokenId))) {
-    return res.status(400).json({ error: "This butt does not exist" });
-  }
-
-  let metadata;
   try {
-    metadata = await getMetadataFromS3(`${METADATA_KEY}${id}`);
+    const metadata = await getMetadataFunction(tokenID);
+    if (metadata.error) {
+      // If metadata function returned an error, send it with a 400 status code
+      return res.status(400).json({ error: metadata.error });
+    }
+
+    // If everything went well, send the metadata with a 200 status code
+    res.status(200).json(metadata);
   } catch (error) {
-    return res.status(401).json({ error: error });
+    // If there was an error calling getMetadataFunction, log it and return a 500 status
+    console.error("An error occurred:", error);
+    return res
+      .status(500)
+      .json({ error: "An error occurred while fetching metadata" });
   }
-
-  res.writeHead(200, {
-    "Content-Type": "application/json",
-    "Content-Disposition": "inline",
-  });
-
-  metadata.pipe(res);
-
-  return;
 };
 
 async function getMetadataFromS3(key) {

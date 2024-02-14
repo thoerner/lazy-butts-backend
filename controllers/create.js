@@ -12,6 +12,7 @@ import s3, {
 import { getTokenMetadata } from "../utils/cubMetadata.js";
 import { getNFTMetadata } from "../utils/nftMetadata.js";
 import { LAZY_LIONS_ADDRESS } from "../utils/consts.js";
+import { getMetadataFunction } from "./metadata.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const projectRoot = path.resolve(__dirname, "..");
@@ -112,7 +113,6 @@ async function getPublicMetadataFromS3(key) {
   }
 }
 
-
 // utility function to get transparent image from S3
 async function getTransparentImageFromS3(tokenId) {
   const params = {
@@ -149,12 +149,14 @@ export const createValentine = async (req, res) => {
   let metadata;
 
   try {
-    metadata = await getPublicMetadataFromS3(`public/metadata/${tokenId}.json`);
+    metadata = await getMetadataFunction(tokenId);
   } catch (error) {
     console.error("An error occurred:", error);
-    return res
-      .status(400)
-      .json({ error: "Metadata for this token is unavailable" });
+    return res.status(400).json({ error: error });
+  }
+
+  if (metadata.error) {
+    return res.status(400).json({ error: metadata.error });
   }
 
   let backgroundColor = metadata.attributes.find(
