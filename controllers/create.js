@@ -1,14 +1,10 @@
-import axios from "axios";
 import fs from "fs";
 import fsPromises from "fs/promises";
 import sharp from "sharp";
 import path from "path";
 import { fileURLToPath } from "url";
 import { downloadFile } from "../utils/ipfsUtils.js";
-import s3, {
-  GetObjectCommand,
-  GetObjectAclCommand,
-} from "../services/s3Service.js";
+import s3, { GetObjectCommand } from "../services/s3Service.js";
 import { getTokenMetadata } from "../utils/cubMetadata.js";
 import { getNFTMetadata } from "../utils/nftMetadata.js";
 import { LAZY_LIONS_ADDRESS } from "../utils/consts.js";
@@ -20,97 +16,10 @@ const outputDir = path.join(projectRoot, "output");
 const downloadDir = path.join(outputDir, "download");
 const layersDir = path.join(projectRoot, "layers");
 const rexDir = path.join(layersDir, "RexRoar");
-
-const ENV = process.env.ENV;
+const nftLayersDir = path.join(layersDir, "NFT");
 
 async function resizeImage(imageBuffer, width, height) {
   return await sharp(imageBuffer).resize(width, height).png().toBuffer();
-}
-
-// Helper function to convert a stream to JSON
-function streamToJson(stream) {
-  return new Promise((resolve, reject) => {
-    let rawData = "";
-    stream.on("data", (chunk) => (rawData += chunk));
-    stream.on("error", reject);
-    stream.on("end", () => {
-      try {
-        const jsonData = JSON.parse(rawData);
-        resolve(jsonData);
-      } catch (e) {
-        reject(e);
-      }
-    });
-  });
-}
-
-async function getMetadataFromS3(key) {
-  // Define S3 bucket name
-  const bucketName = "lazybutts";
-
-  const params = {
-    Bucket: bucketName,
-    Key: key,
-  };
-
-  const command = new GetObjectCommand(params);
-
-  try {
-    const data = await s3.send(command);
-    return streamToJson(data.Body);
-  } catch (error) {
-    console.log("An error occurred:", error);
-    throw error;
-  }
-}
-
-async function getPublicMetadataFromS3(key) {
-  // Define S3 bucket name
-  const bucketName = "lazybutts";
-
-  if (ENV === "dev") {
-    return await getMetadataFromS3(key);
-  }
-
-  // Set up parameters for checking the ACL (Access Control List)
-  const aclParams = {
-    Bucket: bucketName,
-    Key: key,
-  };
-
-  // Create a command to get the ACL for the object
-  const aclCommand = new GetObjectAclCommand(aclParams);
-
-  try {
-    // Send command to get the ACL for the object
-    const aclData = await s3.send(aclCommand);
-    // Check if the object is publicly readable
-    const Grantee = aclData.Grants.find(
-      (grant) =>
-        grant.Grantee.URI === "http://acs.amazonaws.com/groups/global/AllUsers"
-    );
-    if (!(Grantee && Grantee.Permission === "READ")) {
-      throw new Error("You are not authorized to view this metadata");
-    }
-
-    // Set up parameters to get the object
-    const params = {
-      Bucket: bucketName,
-      Key: key,
-    };
-
-    // Create a command to get the object
-    const command = new GetObjectCommand(params);
-
-    // Send command to get the object
-    const data = await s3.send(command);
-
-    // Read and parse the object body to JSON directly from the stream
-    return streamToJson(data.Body);
-  } catch (error) {
-    console.log("Caught an error:", error.message);
-    throw error;
-  }
 }
 
 // utility function to get transparent image from S3
@@ -510,3 +419,312 @@ export const createRexRoar = async (req, res) => {
     }
   }
 };
+
+export const createCocoPride = async (req, res) => {
+  const { tokenId } = req.params;
+  console.log(`Creating Coco Pride image for token #${tokenId}`);
+
+  let metadata;
+
+  try {
+    metadata = await getNFTMetadata(tokenId, LAZY_LIONS_ADDRESS);
+    const parsedMetadata = JSON.parse(metadata.metadata);
+    let attributes = parsedMetadata.attributes.reduce((acc, attribute) => {
+      acc[attribute.trait_type] = attribute.value;
+      return acc;
+    }, {});
+
+    // Define directories
+    let topNftLayerDir = path.join(nftLayersDir, "Top");
+    let bottomNftLayerDir = path.join(nftLayersDir, "Bottom");
+
+    let size = 2000;
+
+    // Prepare file paths and read files in parallel, only for existing attributes
+    let { topPaths, bottomPaths } = prepareImagePaths(
+      attributes,
+      topNftLayerDir,
+      bottomNftLayerDir
+    );
+
+    let topImageBuffers = await readAndResizeImages(topPaths, size);
+    let bottomImageBuffers = await readAndResizeImages(bottomPaths, size);
+
+    // Composite images
+    const combinedImageBuffer = await compositeImages(
+      topImageBuffers,
+      bottomImageBuffers,
+      size
+    );
+
+    let backgroundColor = attributes["Background"];
+
+    const pathToBackgroundImage = path.join(
+      layersDir,
+      "CocoPride",
+      "backgrounds",
+      `${backgroundColor}.png`
+    );
+
+    const backgroundImageBuffer = await fsPromises.readFile(
+      pathToBackgroundImage
+    );
+
+    const pathToForegroundImage = path.join(
+      layersDir,
+      "CocoPride",
+      "foreground.png"
+    );
+
+    const foregroundImageBuffer = await fsPromises.readFile(
+      pathToForegroundImage
+    );
+
+    const xOffset = (4000 - 2000) / 2;
+
+    const finalImageBuffer = await sharp(backgroundImageBuffer)
+      .composite([
+        {
+          input: combinedImageBuffer,
+          top: 0,
+          left: xOffset,
+        },
+        {
+          input: foregroundImageBuffer,
+          top: 0,
+          left: 0,
+        },
+      ])
+      .png()
+      .toBuffer();
+
+    // Send image response
+    res.writeHead(200, {
+      "Content-Type": "image/png",
+      "Content-Length": finalImageBuffer.length,
+    });
+    res.end(finalImageBuffer);
+  } catch (error) {
+    console.error("An error occurred:", error);
+    res.status(400).json({ error: "Failed to create image" });
+  }
+};
+
+function prepareImagePaths(attributes, topNftLayerDir, bottomNftLayerDir) {
+  const topLayerOrder = [
+    // "Background",
+    "Body",
+    "Bodygear",
+    "Mane",
+    "Earring",
+    "Eyes",
+    "Headgear",
+    "Mouth",
+  ];
+
+  const bottomLayerOrder = [
+    // "BottomBackground",
+    "BottomBody",
+    "BottomMane",
+    "BottomBodygear",
+    "BottomHeadgear",
+  ];
+
+  let topPaths = {};
+  let bottomPaths = {};
+
+  // Prepare top layer paths
+  topLayerOrder.forEach((trait) => {
+    if (attributes[trait]) {
+      topPaths[trait] = path.join(
+        topNftLayerDir,
+        trait,
+        `${attributes[trait]}.png`
+      );
+    }
+  });
+
+  // Prepare bottom layer paths with special handling
+  bottomLayerOrder.forEach((bottomTrait) => {
+    const attributeKey = bottomTrait.replace("Bottom", "");
+    if (attributes[attributeKey]) {
+      let bottomDir, fileName;
+      switch (attributeKey) {
+        case "Background":
+          bottomDir = "Butt Background";
+          fileName = `${attributes[attributeKey]}.png`;
+          break;
+        case "Body":
+          bottomDir = "Butt";
+          fileName = `${attributes[attributeKey]} Butt.png`;
+          break;
+        case "Mane":
+          // Assuming mane attributes include color in their name, e.g., "Green Mane"
+          const colorMatch = attributes[attributeKey].match(/(\w+)$/);
+          const color = colorMatch ? colorMatch[1] : "Default";
+          bottomDir = "Tail Tuft";
+          fileName = `${color}.png`;
+          break;
+        case "Headgear":
+          bottomDir = "Accessories-Safe";
+          fileName = transformAccessories(attributes[attributeKey]);
+          break;
+        case "Bodygear":
+          bottomDir = "Bodygear Bottom";
+          fileName = transformBodygear(attributes[attributeKey]);
+          break;
+        default:
+          bottomDir = "";
+          fileName = `${attributes[attributeKey]}.png`;
+          break;
+      }
+      if (bottomDir && fileName) {
+        bottomPaths[bottomTrait] = path.join(
+          bottomNftLayerDir,
+          bottomDir,
+          fileName
+        );
+      }
+    }
+  });
+
+  return { topPaths, bottomPaths };
+}
+
+async function compositeImages(topImageBuffers, bottomImageBuffers, size) {
+  try {
+    // Convert object of buffers into an array of { input: buffer } objects for top layers
+    const topLayers = Object.values(topImageBuffers).map((buffer) => ({
+      input: buffer,
+    }));
+
+    // Do the same for bottom layers
+    const bottomLayers = Object.values(bottomImageBuffers).map((buffer) => ({
+      input: buffer,
+    }));
+
+    // Composite the top part
+    const topComposite = await sharp({
+      create: {
+        width: size,
+        height: size,
+        channels: 4,
+        background: "transparent",
+      },
+    })
+      .composite(topLayers)
+      .png()
+      .toBuffer();
+
+    // Composite the bottom part
+    const bottomComposite = await sharp({
+      create: {
+        width: size,
+        height: size,
+        channels: 4,
+        background: "transparent",
+      },
+    })
+      .composite(bottomLayers)
+      .png()
+      .toBuffer();
+
+    // Now combine top and bottom composites vertically
+    const finalImage = await sharp({
+      create: {
+        width: size,
+        height: size * 2, // Assuming vertical stacking
+        channels: 4,
+        background: "transparent",
+      },
+    })
+      .composite([
+        { input: topComposite, top: 0, left: 0 },
+        { input: bottomComposite, top: size, left: 0 }, // Adjust 'top' for correct positioning
+      ])
+      .png()
+      .toBuffer();
+
+    return finalImage;
+  } catch (error) {
+    console.error("Error compositing images:", error);
+    throw error;
+  }
+}
+
+async function readAndResizeImages(imagePaths, size) {
+  let imageBuffers = {};
+  for (const [trait, path] of Object.entries(imagePaths)) {
+    try {
+      const buffer = await fsPromises.readFile(path);
+      const resizedBuffer = await sharp(buffer)
+        .resize(size, size)
+        .png()
+        .toBuffer();
+      imageBuffers[trait] = resizedBuffer;
+    } catch (error) {
+      console.error(`Error processing ${trait}:`, error);
+    }
+  }
+  return imageBuffers;
+}
+
+function transformBodygear(bodygearName) {
+  const bodygearMappings = {
+    "Black Hoodie": "Black Hoodie Bottom.png",
+    "Business Shirt": "Business Bottom.png",
+    "Chef Uniform": "Chef Bottom.png",
+    "Coconut Bra": "Coco Bottom.png",
+    "Ethereum Business Shirt": "Ethereum Business Bottom.png",
+    "Ethereum Shirt": "Ethereum Bottom.png",
+    Floaties: "Floaty Bottom.png",
+    "Football Jersey - Blue": "Blue Jersey Bottom.png",
+    "Football Jersey - Red": "Red Jersey Bottom.png",
+    "Gladiator Armour": "Armour Bottom.png",
+    "Gold Chain": "Gold Chain Bottom.png",
+    "Hawaiian Shirt": "Hawaiian Shorts.png",
+    "Lab Coat": "Lab Coat Bottom.png",
+    Lederhosen: "Lederhosen Bottom.png",
+    "Leopard Fur Coat": "Leopard Coat Bottom.png",
+    "Lion Shirt": "Lion Pants.png",
+    "Police Uniform": "Police Pants.png",
+    "Purple Fur Coat": "Purple Fur Coat Bottom.png",
+    "Ranger Shirt": "Ranger Pants.png",
+    "Referee shirt": "Referee Pants.png",
+    "Ripped Shirt - Black": "Black Ripped Jeans.png",
+    "Ripped Shirt - White": "White Ripped Jeans.png",
+    "Space Suit": "Space Suit Bottom.png",
+    // Assuming "Nothing" maps directly or has no bottom equivalent
+    Nothing: "Nothing Bottom.png",
+  };
+
+  // Default transformation assuming most names map directly by appending " Bottom"
+  return bodygearMappings[bodygearName] || `${bodygearName} Bottom.png`;
+}
+
+function transformAccessories(headgearName) {
+  const accessoriesMappings = {
+    "Black Cap": "Black High Tops.png",
+    "Bucket Hat": "Boombox.png",
+    "Bunny Ears": "Carrot.png",
+    Crown: "Scepter.png",
+    Halo: "Harp.png",
+    Horns: "Hooves.png",
+    "LAZY Hat": "LAZY Sneakers.png",
+    Nothing: "Nothing.png",
+    "Party Hat": "Party Balloon.png",
+    "Pirate Hat": "Parrot and Cutlass.png",
+    "Police Hat": "Baton and Flashlight.png",
+    "Safari Hat": "Binoculars and Field Guide.png",
+    "Santa Hat": "Toy Bag and Boots.png",
+    "Sea Captain Hat": "Anchor with Rope.png",
+    "Sheriff Hat": "Revolver and Boots.png",
+    "Spinner Hat": "Puzzle Cube.png",
+    "Straw Beach Hat": "Rum Bottle and Flip Flops.png",
+    "Top Hat": "Fancy Cane.png",
+    "Wizard Hat": "Magic Wand.png",
+  };
+
+  // Return the corresponding accessory, defaulting to "Nothing.png" if not found
+  return accessoriesMappings[headgearName] || "Nothing.png";
+}

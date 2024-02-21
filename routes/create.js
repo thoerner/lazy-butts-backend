@@ -4,6 +4,7 @@ import {
   createValentine,
   createValentineCub,
   createGm,
+  createCocoPride,
 } from "../controllers/create.js";
 
 const router = express.Router();
@@ -26,6 +27,11 @@ router.get(
 router.get(
   "/rex/:tokenId",
   createRexRoar
+);
+
+router.get(
+  "/coco-pride/:tokenId",
+  createCocoPride
 );
 
 export default router;
