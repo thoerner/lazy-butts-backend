@@ -430,7 +430,7 @@ export const createCocoPride = async (req, res) => {
     metadata = await getNFTMetadata(tokenId, LAZY_LIONS_ADDRESS);
     const parsedMetadata = JSON.parse(metadata.metadata);
     let attributes = parsedMetadata.attributes.reduce((acc, attribute) => {
-      acc[attribute.trait_type] = attribute.value;
+      acc[attribute.trait_type] = attribute.value.trim();
       return acc;
     }, {});
 
@@ -535,12 +535,8 @@ function prepareImagePaths(attributes, topNftLayerDir, bottomNftLayerDir) {
 
   // Prepare top layer paths
   topLayerOrder.forEach((trait) => {
-    if (attributes[trait]) {
-      topPaths[trait] = path.join(
-        topNftLayerDir,
-        trait,
-        `${attributes[trait]}.png`
-      );
+    if (attributes[trait] && attributes[trait] !== "Santa Hat") { // Skip "Santa Hat"
+      topPaths[trait] = path.join(topNftLayerDir, trait, `${attributes[trait]}.png`);
     }
   });
 
@@ -561,7 +557,11 @@ function prepareImagePaths(attributes, topNftLayerDir, bottomNftLayerDir) {
         case "Mane":
           // Assuming mane attributes include color in their name, e.g., "Green Mane"
           const colorMatch = attributes[attributeKey].match(/(\w+)$/);
-          const color = colorMatch ? colorMatch[1] : "Default";
+          const color = colorMatch
+            ? colorMatch[1] === "Gold"
+              ? "Black And Gold"
+              : colorMatch[1]
+            : "Default";
           bottomDir = "Tail Tuft";
           fileName = `${color}.png`;
           break;
@@ -587,6 +587,11 @@ function prepareImagePaths(attributes, topNftLayerDir, bottomNftLayerDir) {
       }
     }
   });
+
+  // Adding "Santa Hat" specifically to bottom layers if it exists
+  if (attributes["Headgear"] === "Santa Hat") {
+    bottomPaths["Santa Hat"] = path.join(bottomNftLayerDir, "Accessories-Safe", "Santa Hat.png");
+  }
 
   return { topPaths, bottomPaths };
 }
