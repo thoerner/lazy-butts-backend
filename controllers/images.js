@@ -3,7 +3,7 @@ import s3, { GetObjectCommand } from "../services/s3Service.js";
 import db, { GetItemCommand } from "../services/dbService.js";
 import { downloadFile } from "../utils/ipfsUtils.js";
 import { getTokenMetadata } from "../utils/cubMetadata.js";
-import { ethProvider } from "../services/ethService.js";
+import provider from "../services/ethService.js";
 import { Contract } from "ethers";
 
 const BUTT_KEY = "public/images/butts/";
@@ -14,6 +14,8 @@ const FULL_BODY_THUMB_KEY = "public/images/small-full-lions/";
 const SMALL_BUTT_KEY = "public/images/small-lazy-butts/";
 const MEDIUM_BUTT_KEY = "public/images/medium-lazy-butts/";
 const TRANSPARENT_KEY = "public/images/full-transparent/";
+const ENV = process.env.ENV;
+const BUTTS_CONTRACT_ADDRESS = ENV === "dev" ? process.env.BUTTS_CONTRACT_ADDRESS_TEST : process.env.BUTTS_CONTRACT_ADDRESS;
 
 export const getCubImage = async (req, res) => {
   const { tokenId } = req.params;
@@ -229,10 +231,11 @@ async function getAndReturnImageFromS3(key, res) {
 }
 
 async function doesButtExist(tokenID) {
+  console.log(`Checking if butt with tokenID ${tokenID} exists`)
   const contract = new Contract(
-    process.env.BUTTS_CONTRACT_ADDRESS,
+    BUTTS_CONTRACT_ADDRESS,
     ["function tokenURI(uint256 tokenId) view returns (string)"],
-    ethProvider
+    provider
   );
 
   // check if token is minted by checking if tokenURI exists or returns an error
