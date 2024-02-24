@@ -447,8 +447,8 @@ export const createCocoPride = async (req, res) => {
       bottomNftLayerDir
     );
 
-    let topImageBuffers = await readAndResizeImages(topPaths, size);
-    let bottomImageBuffers = await readAndResizeImages(bottomPaths, size);
+    let topImageBuffers = await readImages(topPaths, size);
+    let bottomImageBuffers = await readImages(bottomPaths, size);
 
     // Composite images
     const combinedImageBuffer = await compositeImages(
@@ -480,7 +480,7 @@ export const createCocoPride = async (req, res) => {
       pathToForegroundImage
     );
 
-    const xOffset = (4000 - 2000) / 2;
+    const xOffset = size / 2;
 
     const finalImageBuffer = await sharp(backgroundImageBuffer)
       .composite([
@@ -638,14 +638,14 @@ async function compositeImages(topImageBuffers, bottomImageBuffers, size) {
     const finalImage = await sharp({
       create: {
         width: size,
-        height: size * 2, // Assuming vertical stacking
+        height: size * 2,
         channels: 4,
         background: "transparent",
       },
     })
       .composite([
         { input: topComposite, top: 0, left: 0 },
-        { input: bottomComposite, top: size, left: 0 }, // Adjust 'top' for correct positioning
+        { input: bottomComposite, top: size, left: 0 },
       ])
       .png()
       .toBuffer();
@@ -657,18 +657,14 @@ async function compositeImages(topImageBuffers, bottomImageBuffers, size) {
   }
 }
 
-async function readAndResizeImages(imagePaths, size) {
+async function readImages(imagePaths) {
   let imageBuffers = {};
-  for (const [trait, path] of Object.entries(imagePaths)) {
+  for (const [trait, imagePath] of Object.entries(imagePaths)) {
     try {
-      const buffer = await fsPromises.readFile(path);
-      const resizedBuffer = await sharp(buffer)
-        .resize(size, size)
-        .png()
-        .toBuffer();
-      imageBuffers[trait] = resizedBuffer;
+      const buffer = await fsPromises.readFile(imagePath);
+      imageBuffers[trait] = buffer;
     } catch (error) {
-      console.error(`Error processing ${trait}:`, error);
+      console.error(`Error processing ${trait} at ${imagePath}:`, error);
     }
   }
   return imageBuffers;
