@@ -440,11 +440,17 @@ export const createCocoPride = async (req, res) => {
 
     let size = 2000;
 
+    const skippedTraitValues = ["Santa Hat"];
+    const skippedTraitTypes = [];
+
     // Prepare file paths and read files in parallel, only for existing attributes
     let { topPaths, bottomPaths } = prepareImagePaths(
       attributes,
       topNftLayerDir,
-      bottomNftLayerDir
+      bottomNftLayerDir,
+      skippedTraitValues,
+      skippedTraitTypes,
+      "Santa Hat"
     );
 
     let topImageBuffers = await readImages(topPaths, size);
@@ -510,7 +516,103 @@ export const createCocoPride = async (req, res) => {
   }
 };
 
-function prepareImagePaths(attributes, topNftLayerDir, bottomNftLayerDir) {
+export const createSpringImage = async (req, res) => {
+  const { tokenId } = req.params;
+  console.log(`Creating Spring image for token #${tokenId}`);
+
+  let metadata;
+
+  try {
+    metadata = await getNFTMetadata(tokenId, LAZY_LIONS_ADDRESS);
+    const parsedMetadata = JSON.parse(metadata.metadata);
+    let attributes = parsedMetadata.attributes.reduce((acc, attribute) => {
+      acc[attribute.trait_type] = attribute.value.trim();
+      return acc;
+    }, {});
+
+    // Define directories
+    let topNftLayerDir = path.join(nftLayersDir, "Top");
+    let bottomNftLayerDir = path.join(nftLayersDir, "Bottom");
+
+    let size = 2000;
+
+    const skippedTraitValues = [];
+    const skippedTraitTypes = ["Headgear"];
+
+    // Prepare file paths and read files in parallel, only for existing attributes
+    let { topPaths, bottomPaths } = prepareImagePaths(
+      attributes,
+      topNftLayerDir,
+      bottomNftLayerDir,
+      skippedTraitValues,
+      skippedTraitTypes,
+      "Bunny Ears"
+    );
+
+    let topImageBuffers = await readImages(topPaths, size);
+    let bottomImageBuffers = await readImages(bottomPaths, size);
+
+    // Composite images
+    const combinedImageBuffer = await compositeImages(
+      topImageBuffers,
+      bottomImageBuffers,
+      size
+    );
+
+    let backgroundColor = attributes["Background"];
+
+    const pathToBackgroundImage = path.join(
+      layersDir,
+      "Spring",
+      "backgrounds",
+      `${backgroundColor}.jpg`
+    );
+
+    const backgroundImageBuffer = await fsPromises.readFile(
+      pathToBackgroundImage
+    );
+
+    const pathToForegroundImage = path.join(
+      layersDir,
+      "Spring",
+      "foreground.png"
+    );
+
+    const foregroundImageBuffer = await fsPromises.readFile(
+      pathToForegroundImage
+    );
+
+    const xOffset = size / 2;
+
+    const finalImageBuffer = await sharp(backgroundImageBuffer)
+      .composite([
+        {
+          input: combinedImageBuffer,
+          top: 0,
+          left: xOffset,
+        },
+        {
+          input: foregroundImageBuffer,
+          top: 0,
+          left: 0,
+        },
+      ])
+      .png()
+      .toBuffer();
+
+    // Send image response
+    res.writeHead(200, {
+      "Content-Type": "image/png",
+      "Content-Length": finalImageBuffer.length,
+    });
+    res.end(finalImageBuffer);
+  } catch (error) {
+    console.error("An error occurred:", error);
+    res.status(400).json({ error: "Failed to create image" });
+  }
+};
+
+function prepareImagePaths(attributes, topNftLayerDir, bottomNftLayerDir, skippedTraitValues, skippedTraitTypes, includeSafeHat) {
   const topLayerOrder = [
     // "Background",
     "Body",
@@ -532,18 +634,30 @@ function prepareImagePaths(attributes, topNftLayerDir, bottomNftLayerDir) {
 
   let topPaths = {};
   let bottomPaths = {};
+  let headgearTrait = "";
 
   // Prepare top layer paths
   topLayerOrder.forEach((trait) => {
-    if (attributes[trait] && attributes[trait] !== "Santa Hat") { // Skip "Santa Hat"
+    if (
+      attributes[trait] &&
+      !skippedTraitValues.includes(attributes[trait]) &&
+      !skippedTraitTypes.includes(trait)
+    ) {
       topPaths[trait] = path.join(topNftLayerDir, trait, `${attributes[trait]}.png`);
+    }
+    if (trait === "Headgear") {
+      headgearTrait = attributes[trait];
     }
   });
 
   // Prepare bottom layer paths with special handling
   bottomLayerOrder.forEach((bottomTrait) => {
     const attributeKey = bottomTrait.replace("Bottom", "");
-    if (attributes[attributeKey]) {
+    if (
+      attributes[attributeKey] &&
+      !skippedTraitValues.includes(attributes[attributeKey]) &&
+      !skippedTraitTypes.includes(attributeKey)
+    ) {
       let bottomDir, fileName;
       switch (attributeKey) {
         case "Background":
@@ -588,9 +702,14 @@ function prepareImagePaths(attributes, topNftLayerDir, bottomNftLayerDir) {
     }
   });
 
-  // Adding "Santa Hat" specifically to bottom layers if it exists
-  if (attributes["Headgear"] === "Santa Hat") {
+  // Adding "Santa Hat" specifically to bottom layers if it exists and includeSafeHat is true
+  if (attributes["Headgear"] === "Santa Hat" && includeSafeHat === "Santa Hat") {
     bottomPaths["Santa Hat"] = path.join(bottomNftLayerDir, "Accessories-Safe", "Santa Hat.png");
+  }
+
+  // Adding "Bunny Ears" specifically to top layers if it exists and includeSafeHat is "Bunny Ears"
+  if (includeSafeHat === "Bunny Ears") {
+    topPaths[headgearTrait] = path.join(topNftLayerDir, "Headgear", "Bunny Ears.png");
   }
 
   return { topPaths, bottomPaths };

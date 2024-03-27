@@ -5,6 +5,7 @@ import {
   createValentineCub,
   createGm,
   createCocoPride,
+  createSpringImage,
 } from "../controllers/create.js";
 
 const router = express.Router();
@@ -32,6 +33,11 @@ router.get(
 router.get(
   "/coco-pride/:tokenId",
   createCocoPride
+);
+
+router.get(
+  "/spring/:tokenId",
+  createSpringImage
 );
 
 export default router;

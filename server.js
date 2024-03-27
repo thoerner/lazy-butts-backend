@@ -11,6 +11,7 @@ import createRoutes from "./routes/create.js";
 // import "./services/buttService.js"
 
 const app = express();
+const PORT = process.env.PORT || 3000;
 
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
@@ -37,6 +38,6 @@ app.use("/api/images", imageRoutes);
 app.use("/api/metadata", metadataRoutes);
 app.use("/api/create", createRoutes);
 
-app.listen(3000, () => {
-  console.log("Server is listening on port 3000");
+app.listen(PORT, () => {
+  console.log("Server is listening on port", PORT);
 });
