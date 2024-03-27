@@ -665,7 +665,7 @@ function prepareImagePaths(attributes, topNftLayerDir, bottomNftLayerDir, skippe
           fileName = `${attributes[attributeKey]}.png`;
           break;
         case "Body":
-          bottomDir = "Butt";
+          bottomDir = "Butt - No Shadow";
           fileName = `${attributes[attributeKey]} Butt.png`;
           break;
         case "Mane":
