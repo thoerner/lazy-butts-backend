@@ -6,6 +6,7 @@ import db, {
 } from "./dbService.js";
 import { Contract, ZeroAddress } from "ethers";
 import LazyButtsAbi from "../contracts/LazyButts.json" assert { type: "json" };
+import logger from "./logger.js";
 
 const BUTTS_CONTRACT_ADDRESS =
   process.env.ENV === "dev"
@@ -49,7 +50,7 @@ const processEvent = async (event) => {
 
   try {
     if (type === "transfer") {
-      console.log(`Transferred token ${tokenId} from ${from} to ${to}`);
+      logger.info(`Transferred token ${tokenId} from ${from} to ${to}`);
       const getItemCommand = new GetItemCommand({
         TableName: "users",
         Key: {
@@ -98,11 +99,11 @@ const processEvent = async (event) => {
             ExpressionAttributeNames: { "#butts": "butts" },
           };
           await db.send(new UpdateItemCommand(params2));
-        }
+        }c
       }
-      console.log(`Updated user data for ${to}`);
+      logger.info(`Updated user data for ${to}`);
     } else if (type === "mint") {
-      console.log(`Minted token ${tokenId} to ${to}`);
+      logger.info(`Minted token ${tokenId} to ${to}`);
 
       // update set of mintedTokens in config table
       const params = {
@@ -125,12 +126,12 @@ const processEvent = async (event) => {
 
       const command = new UpdateItemCommand(params);
       await db.send(command);
-      console.log(`Updated mintedTokens in config table`);
+      logger.info(`Updated mintedTokens in config table`);
 
     }
   } catch (err) {
-    console.error(`Error processing event: ${JSON.stringify(event)}`);
-    console.error(`Error detail: ${err}`);
+    logger.error(`Error processing event: ${JSON.stringify(event)}`);
+    logger.error(`Error detail: ${err}`);
     throw err;
   }
 };
@@ -154,17 +155,17 @@ const runEventQueue = async () => {
     while (retries > 0 && !operationSuccess) {
       try {
         await processEvent(event);
-        console.log(`Successfully processed event`);
+        logger.info(`Successfully processed event`);
         operationSuccess = true; // set flag to true
       } catch (err) {
         // Check the type of error, if it's a non-recoverable error break out of the loop
         if (isNonRecoverableError(err)) {
-          console.error(`Non-recoverable error: ${err}`);
+          logger.error(`Non-recoverable error: ${err}`);
           break;
         }
         retries--;
-        console.error(`Error: ${err}`); // log error
-        console.error(`Retrying event. Attempts remaining: ${retries}`);
+        logger.error(`Error: ${err}`); // log error
+        logger.error(`Retrying event. Attempts remaining: ${retries}`);
       }
     }
   }
@@ -183,39 +184,39 @@ function setupEventListeners() {
     mintEvent(to, tokenId);
   });
 
-  console.log(
+  logger.info(
     `Set up event listeners for contract ${BUTTS_CONTRACT_ADDRESS}...`
   );
 }
 
 async function refreshEventListeners() {
   try {
-    console.log("Starting to refresh event listeners...");
+    logger.info("Starting to refresh event listeners...");
 
     // Actually remove listeners
     contract.removeAllListeners("Transfer");
     contract.removeAllListeners("Mint");
-    console.log("Removed all event listeners.");
+    logger.info("Removed all event listeners.");
 
     // Check the listener count, should be 0 if all were removed
     const listenerCount = await contract.listenerCount();
-    console.log(`Current listener count: ${listenerCount}`);
+    logger.info(`Current listener count: ${listenerCount}`);
     if (listenerCount > 0) {
-      console.error("Listeners were not removed properly!");
+      logger.error("Listeners were not removed properly!");
     }
 
     // Re-setup the listeners
     setupEventListeners();
-    console.log("Re-setup event listeners.");
+    logger.info("Re-setup event listeners.");
 
     // Verify that listeners are added
     const newListenerCount = await contract.listenerCount();
-    console.log(`New listener count: ${newListenerCount}`);
+    logger.info(`New listener count: ${newListenerCount}`);
     if (newListenerCount <= 0) {
-      console.error("Listeners were not added properly!");
+      logger.error("Listeners were not added properly!");
     }
   } catch (error) {
-    console.error("Error during refreshing event listeners:", error);
+    logger.error("Error during refreshing event listeners:", error);
   }
 }
 
@@ -223,7 +224,7 @@ function scheduleRefresh() {
   const REFRESH_INTERVAL = 3600000; // 1 hour
 
   setTimeout(() => {
-    console.log("Scheduling a refresh of event listeners...");
+    logger.info("Scheduling a refresh of event listeners...");
     refreshEventListeners();
     scheduleRefresh();
   }, REFRESH_INTERVAL);
@@ -236,4 +237,4 @@ scheduleRefresh();
 runEventQueue();
 setInterval(runEventQueue, 3000);
 
-console.log(`Listening for events on contract ${BUTTS_CONTRACT_ADDRESS}...`);
+logger.info(`Listening for events on contract ${BUTTS_CONTRACT_ADDRESS}...`);
