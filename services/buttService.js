@@ -175,14 +175,20 @@ const mintEvent = async (to, tokenId) => {
   eventQueue.enqueue({ type: "mint", to, tokenId });
 };
 
-function setupEventListeners() {
-  contract.on("Transfer", (from, to, tokenId) => {
-    transferEvent(from, to, tokenId);
-  });
+let transferListener;
+let mintListener;
 
-  contract.on("Mint", (to, tokenId) => {
+function setupEventListeners() {
+  transferListener = (from, to, tokenId) => {
+    transferEvent(from, to, tokenId);
+  };
+
+  mintListener = (to, tokenId) => {
     mintEvent(to, tokenId);
-  });
+  };
+
+  contract.on("Transfer", transferListener);
+  contract.on("Mint", mintListener);
 
   logger.info(
     `Set up event listeners for contract ${BUTTS_CONTRACT_ADDRESS}...`
@@ -193,15 +199,17 @@ async function refreshEventListeners() {
   try {
     logger.info("Starting to refresh event listeners...");
 
-    // Actually remove listeners
-    contract.removeAllListeners("Transfer");
-    contract.removeAllListeners("Mint");
-    logger.info("Removed all event listeners.");
+    // Remove listeners using the stored references
+    contract.removeListener("Transfer", transferListener);
+    contract.removeListener("Mint", mintListener);
+    logger.info("Removed event listeners.");
 
-    // Check the listener count, should be 0 if all were removed
-    const listenerCount = await contract.listenerCount();
-    logger.info(`Current listener count: ${listenerCount}`);
-    if (listenerCount > 0) {
+    // Check the listener count for each event
+    const transferListenerCount = contract.listenerCount("Transfer");
+    const mintListenerCount = contract.listenerCount("Mint");
+    logger.info(`Transfer listener count: ${transferListenerCount}`);
+    logger.info(`Mint listener count: ${mintListenerCount}`);
+    if (transferListenerCount > 0 || mintListenerCount > 0) {
       logger.error("Listeners were not removed properly!");
     }
 
@@ -210,9 +218,11 @@ async function refreshEventListeners() {
     logger.info("Re-setup event listeners.");
 
     // Verify that listeners are added
-    const newListenerCount = await contract.listenerCount();
-    logger.info(`New listener count: ${newListenerCount}`);
-    if (newListenerCount <= 0) {
+    const newTransferListenerCount = contract.listenerCount("Transfer");
+    const newMintListenerCount = contract.listenerCount("Mint");
+    logger.info(`New Transfer listener count: ${newTransferListenerCount}`);
+    logger.info(`New Mint listener count: ${newMintListenerCount}`);
+    if (newTransferListenerCount <= 0 || newMintListenerCount <= 0) {
       logger.error("Listeners were not added properly!");
     }
   } catch (error) {
