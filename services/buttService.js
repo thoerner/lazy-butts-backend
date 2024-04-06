@@ -205,8 +205,8 @@ async function refreshEventListeners() {
     logger.info("Removed event listeners.");
 
     // Check the listener count for each event
-    const transferListenerCount = contract.listenerCount("Transfer");
-    const mintListenerCount = contract.listenerCount("Mint");
+    const transferListenerCount = await contract.listenerCount("Transfer");
+    const mintListenerCount = await contract.listenerCount("Mint");
     logger.info(`Transfer listener count: ${transferListenerCount}`);
     logger.info(`Mint listener count: ${mintListenerCount}`);
     if (transferListenerCount > 0 || mintListenerCount > 0) {
@@ -218,8 +218,8 @@ async function refreshEventListeners() {
     logger.info("Re-setup event listeners.");
 
     // Verify that listeners are added
-    const newTransferListenerCount = contract.listenerCount("Transfer");
-    const newMintListenerCount = contract.listenerCount("Mint");
+    const newTransferListenerCount = await contract.listenerCount("Transfer");
+    const newMintListenerCount = await contract.listenerCount("Mint");
     logger.info(`New Transfer listener count: ${newTransferListenerCount}`);
     logger.info(`New Mint listener count: ${newMintListenerCount}`);
     if (newTransferListenerCount <= 0 || newMintListenerCount <= 0) {
