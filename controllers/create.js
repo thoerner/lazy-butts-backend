@@ -347,15 +347,30 @@ export const createCubGm = async (req, res) => {
 
   try {
     let response = await getTokenMetadata(tokenId);
+    if (!response || !response.metadata) {
+      throw new Error("Metadata not found for token ID " + tokenId);
+    }
     metadata = response.metadata;
   } catch (error) {
-    console.error("An error occurred:", error);
+    console.error("An error occurred:", error.message);
     return res
-      .status(400)
-      .json({ error: "Metadata for this token is unavailable" });
+      .status(404)
+      .json({
+        errorCode: "METADATA_NOT_FOUND",
+        error: "Metadata for this token is unavailable",
+      });
   }
 
   const parsedMetadata = metadata;
+
+  if (!parsedMetadata || !parsedMetadata.attributes) {
+    return res
+      .status(404)
+      .json({
+        errorCode: "ATTRIBUTES_NOT_FOUND",
+        error: "Attributes for the cub are not available",
+      });
+  }
 
   let ageAttribute = parsedMetadata.attributes.find(
     (attribute) => attribute.trait_type === "Age"
@@ -366,20 +381,34 @@ export const createCubGm = async (req, res) => {
   );
 
   if (!ageAttribute) {
-    return res.status(404).send("Age attribute not found");
+    return res
+      .status(404)
+      .json({
+        errorCode: "AGE_ATTRIBUTE_NOT_FOUND",
+        error: "Age attribute not found",
+      });
   }
 
   if (!bodyAttribute) {
-    return res.status(404).send("Body attribute not found");
+    return res
+      .status(404)
+      .json({
+        errorCode: "BODY_ATTRIBUTE_NOT_FOUND",
+        error: "Body attribute not found",
+      });
   }
 
   let age = ageAttribute.value;
   let body = bodyAttribute.value;
 
-  if (age !== "Young")
+  if (age !== "Young") {
     return res
       .status(400)
-      .json({ error: "Cub GMs are only available for Young cubs" });
+      .json({
+        errorCode: "CUB_NOT_YOUNG",
+        error: "Cub GMs are only available for Young cubs",
+      });
+  }
 
   let imageCid = parsedMetadata.image.split("ipfs://")[1];
 

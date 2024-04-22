@@ -21,7 +21,9 @@ export async function getTokenMetadata(tokenId) {
     };
   } catch (error) {
     console.error("Error in getTokenMetadata:", error);
-    throw error;
+    return {
+      error: error,
+    }
   }
 }
 
