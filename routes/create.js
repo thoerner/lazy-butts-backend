@@ -4,6 +4,7 @@ import {
   createValentine,
   createValentineCub,
   createGm,
+  createCubGm,
   createCocoPride,
   createSpringImage,
 } from "../controllers/create.js";
@@ -13,6 +14,11 @@ const router = express.Router();
 router.get(
   "/gm/:tokenId",
   createGm
+);
+
+router.get(
+  "/gm/cub/:tokenId",
+  createCubGm
 );
 
 router.get(

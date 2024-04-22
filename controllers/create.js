@@ -338,6 +338,77 @@ export const createGm = async (req, res) => {
   res.end(combinedImageBuffer);
 };
 
+export const createCubGm = async (req, res) => {
+  const { tokenId } = req.params;
+
+  console.log(`Creating Cub GM image for token #${tokenId}`);
+
+  let metadata;
+
+  try {
+    let response = await getTokenMetadata(tokenId);
+    metadata = response.metadata;
+  } catch (error) {
+    console.error("An error occurred:", error);
+    return res
+      .status(400)
+      .json({ error: "Metadata for this token is unavailable" });
+  }
+
+  const parsedMetadata = metadata;
+
+  let ageAttribute = parsedMetadata.attributes.find(
+    (attribute) => attribute.trait_type === "Age"
+  );
+
+  let bodyAttribute = parsedMetadata.attributes.find(
+    (attribute) => attribute.trait_type === "Body"
+  );
+
+  if (!ageAttribute) {
+    return res.status(404).send("Age attribute not found");
+  }
+
+  if (!bodyAttribute) {
+    return res.status(404).send("Body attribute not found");
+  }
+
+  let age = ageAttribute.value;
+  let body = bodyAttribute.value;
+
+  if (age !== "Young")
+    return res
+      .status(400)
+      .json({ error: "Cub GMs are only available for Young cubs" });
+
+  let imageCid = parsedMetadata.image.split("ipfs://")[1];
+
+  const size = 2000;
+
+  // download image
+  const imageBuffer = await downloadFile(imageCid);
+  const baseLayerBuffer = await resizeImage(imageBuffer, size, size);
+
+  const pathToGmImage = path.join(layersDir, "GmMilk", `${body}.png`);
+
+  const gmImageLayer = fs.readFileSync(pathToGmImage);
+  const resizedGmImageLayer = await resizeImage(gmImageLayer, size, size);
+
+  const combinedImageBuffer = await sharp(baseLayerBuffer)
+    .composite([{ input: resizedGmImageLayer, blend: "over" }])
+    .png()
+    .toBuffer();
+
+  // Set headers to display image in the browser or Postman
+  res.writeHead(200, {
+    "Content-Type": "image/png",
+    "Content-Length": combinedImageBuffer.length,
+  });
+
+  // Send the image buffer and end the response
+  res.end(combinedImageBuffer);
+};
+
 export const createRexRoar = async (req, res) => {
   const { tokenId } = req.params;
 
@@ -612,7 +683,14 @@ export const createSpringImage = async (req, res) => {
   }
 };
 
-function prepareImagePaths(attributes, topNftLayerDir, bottomNftLayerDir, skippedTraitValues, skippedTraitTypes, includeSafeHat) {
+function prepareImagePaths(
+  attributes,
+  topNftLayerDir,
+  bottomNftLayerDir,
+  skippedTraitValues,
+  skippedTraitTypes,
+  includeSafeHat
+) {
   const topLayerOrder = [
     // "Background",
     "Body",
@@ -643,7 +721,11 @@ function prepareImagePaths(attributes, topNftLayerDir, bottomNftLayerDir, skippe
       !skippedTraitValues.includes(attributes[trait]) &&
       !skippedTraitTypes.includes(trait)
     ) {
-      topPaths[trait] = path.join(topNftLayerDir, trait, `${attributes[trait]}.png`);
+      topPaths[trait] = path.join(
+        topNftLayerDir,
+        trait,
+        `${attributes[trait]}.png`
+      );
     }
     if (trait === "Headgear") {
       headgearTrait = attributes[trait];
@@ -703,13 +785,24 @@ function prepareImagePaths(attributes, topNftLayerDir, bottomNftLayerDir, skippe
   });
 
   // Adding "Santa Hat" specifically to bottom layers if it exists and includeSafeHat is true
-  if (attributes["Headgear"] === "Santa Hat" && includeSafeHat === "Santa Hat") {
-    bottomPaths["Santa Hat"] = path.join(bottomNftLayerDir, "Accessories-Safe", "Santa Hat.png");
+  if (
+    attributes["Headgear"] === "Santa Hat" &&
+    includeSafeHat === "Santa Hat"
+  ) {
+    bottomPaths["Santa Hat"] = path.join(
+      bottomNftLayerDir,
+      "Accessories-Safe",
+      "Santa Hat.png"
+    );
   }
 
   // Adding "Bunny Ears" specifically to top layers if it exists and includeSafeHat is "Bunny Ears"
   if (includeSafeHat === "Bunny Ears") {
-    topPaths[headgearTrait] = path.join(topNftLayerDir, "Headgear", "Bunny Ears.png");
+    topPaths[headgearTrait] = path.join(
+      topNftLayerDir,
+      "Headgear",
+      "Bunny Ears.png"
+    );
   }
 
   return { topPaths, bottomPaths };
