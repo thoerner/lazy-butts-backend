@@ -7,9 +7,15 @@ import {
   createCubGm,
   createCocoPride,
   createSpringImage,
+  createCustomImage,
 } from "../controllers/create.js";
 
 const router = express.Router();
+
+router.post(
+  "/custom",
+  createCustomImage
+);
 
 router.get(
   "/gm/:tokenId",

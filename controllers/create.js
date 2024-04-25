@@ -9,6 +9,7 @@ import { getTokenMetadata } from "../utils/cubMetadata.js";
 import { getNFTMetadata } from "../utils/nftMetadata.js";
 import { LAZY_LIONS_ADDRESS } from "../utils/consts.js";
 import { getMetadataFunction } from "./metadata.js";
+import { generateImage } from "../scripts/createCustomLion.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const projectRoot = path.resolve(__dirname, "..");
@@ -21,6 +22,36 @@ const nftLayersDir = path.join(layersDir, "NFT");
 async function resizeImage(imageBuffer, width, height) {
   return await sharp(imageBuffer).resize(width, height).png().toBuffer();
 }
+
+// Add a new function to generate a custom image based on traits
+export const createCustomImage = async (req, res) => {
+  const traits = req.body; // Assuming traits are sent as a JSON payload
+
+  // log the traits to the console for debugging
+  console.log("Traits received:", traits);
+
+  try {
+      // Generate the image buffer using the imported function
+      const imageBuffer = await generateImage(traits);
+
+      // save to disk for debugging
+      const outputPath = path.join(downloadDir, "custom.png");
+      await fsPromises.writeFile(outputPath, imageBuffer);
+      console.log(`Custom image saved to ${outputPath}`);
+
+      // Set headers to display image in the browser or via API tools like Postman
+      res.writeHead(200, {
+          "Content-Type": "image/png",
+          "Content-Length": imageBuffer.length,
+      });
+
+      // Send the image buffer and end the response
+      res.end(imageBuffer);
+  } catch (error) {
+      console.error("An error occurred during image generation:", error);
+      res.status(500).json({ error: error.message });
+  }
+};
 
 // utility function to get transparent image from S3
 async function getTransparentImageFromS3(tokenId) {
