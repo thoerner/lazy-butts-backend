@@ -432,15 +432,6 @@ export const createCubGm = async (req, res) => {
   let age = ageAttribute.value;
   let body = bodyAttribute.value;
 
-  if (age !== "Young") {
-    return res
-      .status(400)
-      .json({
-        errorCode: "CUB_NOT_YOUNG",
-        error: "Cub GMs are only available for Young cubs",
-      });
-  }
-
   let imageCid = parsedMetadata.image.split("ipfs://")[1];
 
   const size = 2000;
@@ -449,9 +440,22 @@ export const createCubGm = async (req, res) => {
   const imageBuffer = await downloadFile(imageCid);
   const baseLayerBuffer = await resizeImage(imageBuffer, size, size);
 
-  const pathToGmImage = path.join(layersDir, "GmMilk", `${body}.png`);
+  let gmLayerPath;
 
-  const gmImageLayer = fs.readFileSync(pathToGmImage);
+  if (age === "Young") {
+    gmLayerPath = path.join(layersDir, "GmMilk", `${body}.png`);
+  } else if (age === "Old") {
+    gmLayerPath = path.join(layersDir, "GmJuice", `${body}.png`);
+  } else {
+    return res
+      .status(400)
+      .json({
+        errorCode: "INVALID_CUB_AGE",
+        error: "Cub GMs are only available for Young and Old cubs",
+      });
+  }
+
+  const gmImageLayer = fs.readFileSync(gmLayerPath);
   const resizedGmImageLayer = await resizeImage(gmImageLayer, size, size);
 
   const combinedImageBuffer = await sharp(baseLayerBuffer)
