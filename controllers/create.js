@@ -751,6 +751,8 @@ export const createSummerVideo = async (req, res) => {
   let metadata;
   let middleLayerBuffer;
   let tempMiddleLayerPath;
+  let tempOutputVideoPath;
+  let outputVideoPath;
 
   try {
     metadata = await getNFTMetadata(tokenId, LAZY_LIONS_ADDRESS);
@@ -811,14 +813,14 @@ export const createSummerVideo = async (req, res) => {
       "Summer",
       "fireworks-4s2.mp3"
     );
-    const tempOutputVideoPath = path.join(
+    tempOutputVideoPath = path.join(
       __dirname,
       "..",
       "output",
       "summer-video",
       `${tokenId}_temp.mp4`
     );
-    const outputVideoPath = path.join(
+    outputVideoPath = path.join(
       __dirname,
       "..",
       "output",
@@ -932,6 +934,12 @@ export const createSummerVideo = async (req, res) => {
     // Clean up temporary files
     if (tempMiddleLayerPath && fs.existsSync(tempMiddleLayerPath)) {
       await unlink(tempMiddleLayerPath);
+    }
+    if (tempOutputVideoPath && fs.existsSync(tempOutputVideoPath)) {
+      await unlink(tempOutputVideoPath);
+    }
+    if (outputVideoPath && fs.existsSync(outputVideoPath)) {
+      await unlink(outputVideoPath);
     }
   }
 };
