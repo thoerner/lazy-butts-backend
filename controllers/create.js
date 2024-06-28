@@ -2,6 +2,8 @@ import fs from "fs";
 import fsPromises from "fs/promises";
 import sharp from "sharp";
 import path from "path";
+import ffmpeg from "fluent-ffmpeg";
+import { promisify } from "util";
 import { fileURLToPath } from "url";
 import { downloadFile } from "../utils/ipfsUtils.js";
 import s3, { GetObjectCommand } from "../services/s3Service.js";
@@ -19,6 +21,9 @@ const layersDir = path.join(projectRoot, "layers");
 const rexDir = path.join(layersDir, "RexRoar");
 const nftLayersDir = path.join(layersDir, "NFT");
 
+const writeFile = promisify(fs.writeFile);
+const unlink = promisify(fs.unlink);
+
 async function resizeImage(imageBuffer, width, height) {
   return await sharp(imageBuffer).resize(width, height).png().toBuffer();
 }
@@ -31,25 +36,25 @@ export const createCustomImage = async (req, res) => {
   console.log("Traits received:", traits);
 
   try {
-      // Generate the image buffer using the imported function
-      const imageBuffer = await generateImage(traits);
+    // Generate the image buffer using the imported function
+    const imageBuffer = await generateImage(traits);
 
-      // save to disk for debugging
-      const outputPath = path.join(downloadDir, "custom.png");
-      await fsPromises.writeFile(outputPath, imageBuffer);
-      console.log(`Custom image saved to ${outputPath}`);
+    // save to disk for debugging
+    const outputPath = path.join(downloadDir, "custom.png");
+    await fsPromises.writeFile(outputPath, imageBuffer);
+    console.log(`Custom image saved to ${outputPath}`);
 
-      // Set headers to display image in the browser or via API tools like Postman
-      res.writeHead(200, {
-          "Content-Type": "image/png",
-          "Content-Length": imageBuffer.length,
-      });
+    // Set headers to display image in the browser or via API tools like Postman
+    res.writeHead(200, {
+      "Content-Type": "image/png",
+      "Content-Length": imageBuffer.length,
+    });
 
-      // Send the image buffer and end the response
-      res.end(imageBuffer);
+    // Send the image buffer and end the response
+    res.end(imageBuffer);
   } catch (error) {
-      console.error("An error occurred during image generation:", error);
-      res.status(500).json({ error: error.message });
+    console.error("An error occurred during image generation:", error);
+    res.status(500).json({ error: error.message });
   }
 };
 
@@ -384,23 +389,19 @@ export const createCubGm = async (req, res) => {
     metadata = response.metadata;
   } catch (error) {
     console.error("An error occurred:", error.message);
-    return res
-      .status(404)
-      .json({
-        errorCode: "METADATA_NOT_FOUND",
-        error: "Metadata for this token is unavailable",
-      });
+    return res.status(404).json({
+      errorCode: "METADATA_NOT_FOUND",
+      error: "Metadata for this token is unavailable",
+    });
   }
 
   const parsedMetadata = metadata;
 
   if (!parsedMetadata || !parsedMetadata.attributes) {
-    return res
-      .status(404)
-      .json({
-        errorCode: "ATTRIBUTES_NOT_FOUND",
-        error: "Attributes for the cub are not available",
-      });
+    return res.status(404).json({
+      errorCode: "ATTRIBUTES_NOT_FOUND",
+      error: "Attributes for the cub are not available",
+    });
   }
 
   let ageAttribute = parsedMetadata.attributes.find(
@@ -412,21 +413,17 @@ export const createCubGm = async (req, res) => {
   );
 
   if (!ageAttribute) {
-    return res
-      .status(404)
-      .json({
-        errorCode: "AGE_ATTRIBUTE_NOT_FOUND",
-        error: "Age attribute not found",
-      });
+    return res.status(404).json({
+      errorCode: "AGE_ATTRIBUTE_NOT_FOUND",
+      error: "Age attribute not found",
+    });
   }
 
   if (!bodyAttribute) {
-    return res
-      .status(404)
-      .json({
-        errorCode: "BODY_ATTRIBUTE_NOT_FOUND",
-        error: "Body attribute not found",
-      });
+    return res.status(404).json({
+      errorCode: "BODY_ATTRIBUTE_NOT_FOUND",
+      error: "Body attribute not found",
+    });
   }
 
   let age = ageAttribute.value;
@@ -447,12 +444,10 @@ export const createCubGm = async (req, res) => {
   } else if (age === "Old") {
     gmLayerPath = path.join(layersDir, "GmJuice", `${body}.png`);
   } else {
-    return res
-      .status(400)
-      .json({
-        errorCode: "INVALID_CUB_AGE",
-        error: "Cub GMs are only available for Young and Old cubs",
-      });
+    return res.status(400).json({
+      errorCode: "INVALID_CUB_AGE",
+      error: "Cub GMs are only available for Young and Old cubs",
+    });
   }
 
   const gmImageLayer = fs.readFileSync(gmLayerPath);
@@ -744,6 +739,196 @@ export const createSpringImage = async (req, res) => {
   } catch (error) {
     console.error("An error occurred:", error);
     res.status(400).json({ error: "Failed to create image" });
+  }
+};
+
+export const createSummerVideo = async (req, res) => {
+  const { tokenId } = req.params;
+  console.log(`Creating Summer video for token #${tokenId}`);
+
+  let metadata;
+  let middleLayerBuffer;
+  let tempMiddleLayerPath;
+
+  try {
+    metadata = await getNFTMetadata(tokenId, LAZY_LIONS_ADDRESS);
+    const parsedMetadata = JSON.parse(metadata.metadata);
+    let attributes = parsedMetadata.attributes.reduce((acc, attribute) => {
+      acc[attribute.trait_type] = attribute.value.trim();
+      return acc;
+    }, {});
+
+    // Define directories
+    let topNftLayerDir = path.join(nftLayersDir, "Top");
+    let bottomNftLayerDir = path.join(nftLayersDir, "Bottom");
+
+    let size = 2000;
+
+    const skippedTraitValues = [];
+    const skippedTraitTypes = [];
+
+    // Prepare file paths and read files in parallel, only for existing attributes
+    let { topPaths, bottomPaths } = prepareImagePaths(
+      attributes,
+      topNftLayerDir,
+      bottomNftLayerDir,
+      skippedTraitValues,
+      skippedTraitTypes
+    );
+
+    let topImageBuffers = await readImages(topPaths, size);
+    let bottomImageBuffers = await readImages(bottomPaths, size);
+
+    // Composite images
+    const combinedImageBuffer = await compositeImages(
+      topImageBuffers,
+      bottomImageBuffers,
+      size
+    );
+
+    middleLayerBuffer = combinedImageBuffer;
+
+    const inputVideoPath = path.join(
+      __dirname,
+      "..",
+      "layers",
+      "Summer",
+      "background-animated.webm"
+    );
+    const overlayImagePath = path.join(
+      __dirname,
+      "..",
+      "layers",
+      "Summer",
+      "foreground.png"
+    );
+    const audioTrackPath = path.join(
+      __dirname,
+      "..",
+      "layers",
+      "Summer",
+      "fireworks-4s2.mp3"
+    );
+    const tempOutputVideoPath = path.join(
+      __dirname,
+      "..",
+      "output",
+      "summer-video",
+      `${tokenId}_temp.mp4`
+    );
+    const outputVideoPath = path.join(
+      __dirname,
+      "..",
+      "output",
+      "summer-image",
+      `${tokenId}_overlay.mp4`
+    );
+    tempMiddleLayerPath = path.join(
+      __dirname,
+      "..",
+      "output",
+      "summer-image",
+      `${tokenId}_middle_temp.png`
+    );
+
+    if (!fs.existsSync(inputVideoPath)) {
+      return res.status(404).json({ error: "Input video not found" });
+    }
+
+    if (!fs.existsSync(overlayImagePath)) {
+      return res.status(404).json({ error: "Overlay image not found" });
+    }
+
+    // Resize middle layer buffer to 2000x4000
+    const resizedMiddleLayerBuffer = await sharp(middleLayerBuffer)
+      .resize(2000, 4000)
+      .toBuffer();
+
+    // Create a 4000x4000 transparent background
+    const background = sharp({
+      create: {
+        width: 4000,
+        height: 4000,
+        channels: 4,
+        background: { r: 0, g: 0, b: 0, alpha: 0 },
+      },
+    });
+
+    // Composite the resized image onto the transparent background
+    await background
+      .composite([{ input: resizedMiddleLayerBuffer, left: 1000, top: 0 }])
+      .png()
+      .toFile(tempMiddleLayerPath);
+
+    console.log("Middle layer created successfully");
+
+    await new Promise((resolve, reject) => {
+      console.log("Creating video...");
+      ffmpeg(inputVideoPath)
+        .input(tempMiddleLayerPath)
+        .input(overlayImagePath)
+        .complexFilter(
+          ["[0:v][1:v]overlay=0:0[temp1]", "[temp1][2:v]overlay=0:0[out]"],
+          ["out"]
+        )
+        .outputOptions("-c:a copy")
+        .save(tempOutputVideoPath)
+        .on("end", resolve)
+        .on("error", reject);
+    });
+
+    console.log("Video created successfully");
+
+    // add audio track to the video
+    await new Promise((resolve, reject) => {
+      console.log("Adding audio track...");
+      ffmpeg(tempOutputVideoPath)
+        .input(audioTrackPath)
+        .outputOptions("-shortest")
+        .save(outputVideoPath)
+        .on("end", resolve)
+        .on("error", reject);
+    });
+
+    console.log("Audio track added successfully");
+
+    // Stream the result back to the client
+    const stat = fs.statSync(outputVideoPath);
+    const fileSize = stat.size;
+    const range = req.headers.range;
+
+    console.log("Streaming video...");
+
+    if (range) {
+      const parts = range.replace(/bytes=/, "").split("-");
+      const start = parseInt(parts[0], 10);
+      const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
+      const chunksize = end - start + 1;
+      const file = fs.createReadStream(outputVideoPath, { start, end });
+      const head = {
+        "Content-Range": `bytes ${start}-${end}/${fileSize}`,
+        "Accept-Ranges": "bytes",
+        "Content-Length": chunksize,
+        "Content-Type": "video/mp4",
+      };
+      res.writeHead(206, head);
+      file.pipe(res);
+    } else {
+      const head = {
+        "Content-Length": fileSize,
+        "Content-Type": "video/mp4",
+      };
+      res.writeHead(200, head);
+      fs.createReadStream(outputVideoPath).pipe(res);
+    }
+  } catch (error) {
+    console.error("An error occurred:", error);
+    res.status(500).json({ error: "Failed to create summer video" });
+  } finally {
+    // Clean up temporary files
+    if (tempMiddleLayerPath && fs.existsSync(tempMiddleLayerPath)) {
+      await unlink(tempMiddleLayerPath);
+    }
   }
 };
 

@@ -8,6 +8,7 @@ import {
   createCocoPride,
   createSpringImage,
   createCustomImage,
+  createSummerVideo,
 } from "../controllers/create.js";
 
 const router = express.Router();
@@ -50,6 +51,11 @@ router.get(
 router.get(
   "/spring/:tokenId",
   createSpringImage
+);
+
+router.get(
+  "/summer/:tokenId",
+  createSummerVideo
 );
 
 export default router;
