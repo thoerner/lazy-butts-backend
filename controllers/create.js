@@ -24,6 +24,8 @@ const nftLayersDir = path.join(layersDir, "NFT");
 const writeFile = promisify(fs.writeFile);
 const unlink = promisify(fs.unlink);
 
+ffmpeg.setFfmpegPath('/usr/bin/ffmpeg');
+
 async function resizeImage(imageBuffer, width, height) {
   return await sharp(imageBuffer).resize(width, height).png().toBuffer();
 }
@@ -839,24 +841,26 @@ export const createSummerVideo = async (req, res) => {
       return res.status(404).json({ error: "Overlay image not found" });
     }
 
+    console.log("Middle layer created successfully");
+
     // Resize middle layer buffer to 2000x4000
     const resizedMiddleLayerBuffer = await sharp(middleLayerBuffer)
-      .resize(2000, 4000)
+      .resize(500, 1000)
       .toBuffer();
 
-    // Create a 4000x4000 transparent background
     const background = sharp({
       create: {
-        width: 4000,
-        height: 4000,
+        width: 1000,
+        height: 1000,
         channels: 4,
         background: { r: 0, g: 0, b: 0, alpha: 0 },
       },
     });
 
+    console.log("Middle layer resized successfully");
     // Composite the resized image onto the transparent background
     await background
-      .composite([{ input: resizedMiddleLayerBuffer, left: 1000, top: 0 }])
+      .composite([{ input: resizedMiddleLayerBuffer, left: 250, top: 0 }])
       .png()
       .toFile(tempMiddleLayerPath);
 
