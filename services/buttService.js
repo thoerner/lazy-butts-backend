@@ -15,6 +15,10 @@ const BUTTS_CONTRACT_ADDRESS =
 
 const contract = new Contract(BUTTS_CONTRACT_ADDRESS, LazyButtsAbi, provider);
 
+const getTableName = (baseName) => {
+  return process.env.ENV === 'dev' ? `${baseName}-test` : baseName;
+};
+
 class EventQueue {
   constructor() {
     this.queue = [];
@@ -52,7 +56,7 @@ const processEvent = async (event) => {
     if (type === "transfer") {
       logger.info(`Transferred token ${tokenId} from ${from} to ${to}`);
       const getItemCommand = new GetItemCommand({
-        TableName: "users",
+        TableName: getTableName("users"),
         Key: {
           address: { S: to },
         },
@@ -61,7 +65,7 @@ const processEvent = async (event) => {
 
       if (userData.Item === undefined) {
         const putParams = {
-          TableName: "users",
+          TableName: getTableName("users"),
           Item: {
             address: { S: to },
             butts: { L: [{ N: tokenId.toString() }] },
@@ -70,7 +74,7 @@ const processEvent = async (event) => {
         await db.send(new PutItemCommand(putParams));
       } else {
         const updateParams = {
-          TableName: "users",
+          TableName: getTableName("users"),
           Key: { address: { S: to } },
           UpdateExpression: "SET #butts = list_append(#butts, :newButt)",
           ExpressionAttributeNames: { "#butts": "butts" },
@@ -84,7 +88,7 @@ const processEvent = async (event) => {
       if (from !== ZeroAddress) {
         const fromUserData = await db.send(
           new GetItemCommand({
-            TableName: "users",
+            TableName: getTableName("users"),
             Key: { address: { S: from } },
           })
         );
@@ -93,13 +97,13 @@ const processEvent = async (event) => {
 
         if (index > -1) {
           const params2 = {
-            TableName: "users",
+            TableName: getTableName("users"),
             Key: { address: { S: from } },
             UpdateExpression: `REMOVE #butts[${index}]`,
             ExpressionAttributeNames: { "#butts": "butts" },
           };
           await db.send(new UpdateItemCommand(params2));
-        }c
+        }
       }
       logger.info(`Updated user data for ${to}`);
     } else if (type === "mint") {
@@ -107,7 +111,7 @@ const processEvent = async (event) => {
 
       // update set of mintedTokens in config table
       const params = {
-        TableName: "config",
+        TableName: getTableName("config"),
         Key: {
           setting: {
             S: "tokenConfig",
@@ -127,7 +131,6 @@ const processEvent = async (event) => {
       const command = new UpdateItemCommand(params);
       await db.send(command);
       logger.info(`Updated mintedTokens in config table`);
-
     }
   } catch (err) {
     logger.error(`Error processing event: ${JSON.stringify(event)}`);
