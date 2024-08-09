@@ -2,6 +2,7 @@ import express from "express";
 import bodyParser from "body-parser";
 import helmet from "helmet";
 import cors from "cors";
+import morgan from "morgan";
 import lionRoutes from "./routes/lions.js";
 import authRoutes from "./routes/auth.js";
 import buttRoutes from "./routes/butts.js";
@@ -26,6 +27,9 @@ const corsOptions = {
 
 // Use CORS middleware with options
 app.use(cors(corsOptions));
+
+// Add Morgan middleware for logging
+app.use(morgan('combined'));
 
 app.get("/", (req, res) => {
   res.send("Hello World!");
