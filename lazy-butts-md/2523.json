@@ -1,0 +1,28 @@
+{
+	"name": "#2523",
+	"description": "Lazy Butts",
+	"external_url": "https://lazybutts.3dkings.io/",
+	"image": "https://lazybutts.3dkings.io/images/2523.png",
+	"attributes": [
+		{
+			"trait_type": "Butt Background",
+			"value": "Mithril"
+		},
+		{
+			"trait_type": "Butt",
+			"value": "Zombie Butt"
+		},
+		{
+			"trait_type": "Bodygear Bottom",
+			"value": "Ranger Pants"
+		},
+		{
+			"trait_type": "Accessories",
+			"value": "Parrot and Cutlass"
+		},
+		{
+			"trait_type": "Tail Tuft",
+			"value": "Brown"
+		}
+	]
+}

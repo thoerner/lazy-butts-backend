@@ -1,0 +1,28 @@
+{
+	"name": "#9",
+	"description": "Lazy Butts",
+	"external_url": "https://lazybutts.3dkings.io/",
+	"image": "https://lazybutts.3dkings.io/images/9.png",
+	"attributes": [
+		{
+			"trait_type": "Butt Background",
+			"value": "Gold"
+		},
+		{
+			"trait_type": "Butt",
+			"value": "Zombie Butt"
+		},
+		{
+			"trait_type": "Bodygear Bottom",
+			"value": "Nothing Bottom"
+		},
+		{
+			"trait_type": "Accessories",
+			"value": "Fancy Cane"
+		},
+		{
+			"trait_type": "Tail Tuft",
+			"value": "Rainbow"
+		}
+	]
+}

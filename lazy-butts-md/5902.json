@@ -1,0 +1,28 @@
+{
+	"name": "#5902",
+	"description": "Lazy Butts",
+	"external_url": "https://lazybutts.3dkings.io/",
+	"image": "https://lazybutts.3dkings.io/images/5902.png",
+	"attributes": [
+		{
+			"trait_type": "Butt Background",
+			"value": "Light purple"
+		},
+		{
+			"trait_type": "Butt",
+			"value": "Standard Butt"
+		},
+		{
+			"trait_type": "Bodygear Bottom",
+			"value": "Ranger Pants"
+		},
+		{
+			"trait_type": "Accessories",
+			"value": "Party Balloon"
+		},
+		{
+			"trait_type": "Tail Tuft",
+			"value": "Brown"
+		}
+	]
+}

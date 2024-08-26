@@ -1,0 +1,28 @@
+{
+	"name": "#6156",
+	"description": "Lazy Butts",
+	"external_url": "https://lazybutts.3dkings.io/",
+	"image": "https://lazybutts.3dkings.io/images/6156.png",
+	"attributes": [
+		{
+			"trait_type": "Butt Background",
+			"value": "Khakhi"
+		},
+		{
+			"trait_type": "Butt",
+			"value": "Standard Butt"
+		},
+		{
+			"trait_type": "Bodygear Bottom",
+			"value": "Armour Bottom"
+		},
+		{
+			"trait_type": "Accessories",
+			"value": "Revolver and Boots"
+		},
+		{
+			"trait_type": "Tail Tuft",
+			"value": "Red"
+		}
+	]
+}
