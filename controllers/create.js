@@ -366,8 +366,8 @@ export const createZiaImage = async (req, res) => {
 
   const combinedImageBuffer = await sharp(baseLayerBuffer)
     .composite([
-      { input: resizedPawImageLayer, blend: "over" },
-      { input: resizedZiaImageLayer, blend: "over"}
+      { input: resizedZiaImageLayer, blend: "over"},
+      { input: resizedPawImageLayer, blend: "over" }
     ])
     .png()
     .toBuffer();
