@@ -362,7 +362,7 @@ export const createZiaImage = async (req, res) => {
 
   const pathToZiaImage = path.join(layersDir, "Zia", `${soda}.png`);
   const ziaImageLayer = fs.readFileSync(pathToZiaImage);
-  const resizedZiaImageLayer = await resizeImage(ziaImageLayer);
+  const resizedZiaImageLayer = await resizeImage(ziaImageLayer, size, size);
 
   const combinedImageBuffer = await sharp(baseLayerBuffer)
     .composite([
