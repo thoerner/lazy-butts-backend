@@ -5,6 +5,7 @@ import {
   createValentineCub,
   createGm,
   createCubGm,
+  createZiaImage,
   createCocoPride,
   createSpringImage,
   createCustomImage,
@@ -26,6 +27,11 @@ router.get(
 router.get(
   "/gm/cub/:tokenId",
   createCubGm
+);
+
+router.get(
+  "/zia/:soda/:tokenId",
+  createZiaImage
 );
 
 router.get(

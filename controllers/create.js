@@ -320,6 +320,68 @@ export const createValentineCub = async (req, res) => {
   res.end(combinedImageBuffer);
 };
 
+export const createZiaImage = async (req, res) => {
+  const { tokenId, soda } = req.params;
+
+  console.log(`Creating Zia ${soda} image for token #${tokenId}`);
+
+  let metadata;
+
+  try {
+    metadata = await getNFTMetadata(tokenId, LAZY_LIONS_ADDRESS);
+  } catch (error) {
+    console.error("An error occurred:", error);
+    return res
+      .status(400)
+      .json({ error: "Metadata for this token is unavailable" });
+  }
+
+  const parsedMetadata = JSON.parse(metadata.metadata);
+
+  let bodyAttribute = parsedMetadata.attributes.find(
+    (attribute) => attribute.trait_type === "Body"
+  );
+
+  if (!bodyAttribute) {
+    return res.status(404).send("Body attribute not found");
+  }
+
+  let body = bodyAttribute.value;
+
+  let imageCid = parsedMetadata.image.split("ipfs://")[1];
+
+  const size = 2000;
+
+  // download image
+  const imageBuffer = await downloadFile(imageCid);
+  const baseLayerBuffer = await resizeImage(imageBuffer, size, size);
+
+  const pathToPawImage = path.join(layersDir, "Paws", `${body}.png`);
+  const pawImageLayer = fs.readFileSync(pathToPawImage);
+  const resizedPawImageLayer = await resizeImage(pawImageLayer, size, size);
+
+  const pathToZiaImage = path.join(layersDir, "Zia", `${soda}.png`);
+  const ziaImageLayer = fs.readFileSync(pathToZiaImage);
+  const resizedZiaImageLayer = await resizeImage(ziaImageLayer, size, size);
+
+  const combinedImageBuffer = await sharp(baseLayerBuffer)
+    .composite([
+      { input: resizedZiaImageLayer, blend: "over"},
+      { input: resizedPawImageLayer, blend: "over" }
+    ])
+    .png()
+    .toBuffer();
+
+  // Set headers to display image in the browser or Postman
+  res.writeHead(200, {
+    "Content-Type": "image/png",
+    "Content-Length": combinedImageBuffer.length,
+  });
+
+  // Send the image buffer and end the response
+  res.end(combinedImageBuffer);
+};
+
 export const createGm = async (req, res) => {
   const { tokenId } = req.params;
 
@@ -357,9 +419,8 @@ export const createGm = async (req, res) => {
   const baseLayerBuffer = await resizeImage(imageBuffer, size, size);
 
   const pathToGmImage = path.join(layersDir, "GM", `${body}.png`);
-
   const gmImageLayer = fs.readFileSync(pathToGmImage);
-  const resizedGmImageLayer = await resizeImage(gmImageLayer, size, size);
+  const resizedGmImageLayer = await resizeImage(gmImageLayer, size, size)
 
   const combinedImageBuffer = await sharp(baseLayerBuffer)
     .composite([{ input: resizedGmImageLayer, blend: "over" }])
