@@ -73,12 +73,24 @@ const processEvent = async (event) => {
             const params = {
               TableName: getTableName("users"),
               Key: { address: { S: from } },
-              UpdateExpression: `REMOVE #butts[${index}]`,
-              ExpressionAttributeNames: { "#butts": "butts" },
+              UpdateExpression: `REMOVE butts[${index}]`,
+              ConditionExpression: `attribute_exists(butts[${index}])`,
             };
-            await db.send(new UpdateItemCommand(params));
-            logger.info(`Removed token ${tokenId} from ${from}`);
+            try {
+              await db.send(new UpdateItemCommand(params));
+              logger.info(`Removed token ${tokenId} from ${from}`);
+            } catch (removeError) {
+              if (removeError.name === 'ConditionalCheckFailedException') {
+                logger.warn(`Token ${tokenId} was not found in ${from}'s butts. It may have been removed already.`);
+              } else {
+                throw removeError;
+              }
+            }
+          } else {
+            logger.warn(`Token ${tokenId} not found in ${from}'s butts. Skipping removal.`);
           }
+        } else {
+          logger.warn(`User ${from} not found or has no butts. Skipping removal.`);
         }
       }
 
