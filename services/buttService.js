@@ -54,7 +54,7 @@ const processEvent = async (event) => {
 
   try {
     if (type === "transfer") {
-      logger.info(`Transferred token ${tokenId} from ${from} to ${to}`);
+      logger.info(`Processing transfer of token ${tokenId} from ${from} to ${to}`);
 
       // Remove the butt from the sender first
       if (from !== ZeroAddress) {
@@ -67,7 +67,9 @@ const processEvent = async (event) => {
         
         if (fromUserData.Item && fromUserData.Item.butts) {
           const butts = fromUserData.Item.butts.L;
-          const index = butts.findIndex((butt) => Number(butt.N) === tokenId);
+          logger.debug(`Current butts for ${from}: ${JSON.stringify(butts)}`);
+          
+          const index = butts.findIndex((butt) => butt.N === tokenId.toString());
 
           if (index > -1) {
             const params = {
@@ -87,7 +89,7 @@ const processEvent = async (event) => {
               }
             }
           } else {
-            logger.warn(`Token ${tokenId} not found in ${from}'s butts. Skipping removal.`);
+            logger.warn(`Token ${tokenId} not found in ${from}'s butts. Skipping removal. Current butts: ${JSON.stringify(butts)}`);
           }
         } else {
           logger.warn(`User ${from} not found or has no butts. Skipping removal.`);
