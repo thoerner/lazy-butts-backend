@@ -55,6 +55,34 @@ const processEvent = async (event) => {
   try {
     if (type === "transfer") {
       logger.info(`Transferred token ${tokenId} from ${from} to ${to}`);
+
+      // Remove the butt from the sender first
+      if (from !== ZeroAddress) {
+        const fromUserData = await db.send(
+          new GetItemCommand({
+            TableName: getTableName("users"),
+            Key: { address: { S: from } },
+          })
+        );
+        
+        if (fromUserData.Item && fromUserData.Item.butts) {
+          const butts = fromUserData.Item.butts.L;
+          const index = butts.findIndex((butt) => Number(butt.N) === tokenId);
+
+          if (index > -1) {
+            const params = {
+              TableName: getTableName("users"),
+              Key: { address: { S: from } },
+              UpdateExpression: `REMOVE #butts[${index}]`,
+              ExpressionAttributeNames: { "#butts": "butts" },
+            };
+            await db.send(new UpdateItemCommand(params));
+            logger.info(`Removed token ${tokenId} from ${from}`);
+          }
+        }
+      }
+
+      // Add the butt to the recipient, ensuring no duplicates
       const getItemCommand = new GetItemCommand({
         TableName: getTableName("users"),
         Key: {
@@ -73,38 +101,24 @@ const processEvent = async (event) => {
         };
         await db.send(new PutItemCommand(putParams));
       } else {
-        const updateParams = {
-          TableName: getTableName("users"),
-          Key: { address: { S: to } },
-          UpdateExpression: "SET #butts = list_append(#butts, :newButt)",
-          ExpressionAttributeNames: { "#butts": "butts" },
-          ExpressionAttributeValues: {
-            ":newButt": { L: [{ N: tokenId.toString() }] },
-          },
-        };
-        await db.send(new UpdateItemCommand(updateParams));
-      }
-
-      if (from !== ZeroAddress) {
-        const fromUserData = await db.send(
-          new GetItemCommand({
+        const existingButts = userData.Item.butts.L.map(butt => Number(butt.N));
+        if (!existingButts.includes(Number(tokenId))) {
+          const updateParams = {
             TableName: getTableName("users"),
-            Key: { address: { S: from } },
-          })
-        );
-        const butts = fromUserData.Item.butts.L;
-        const index = butts.findIndex((butt) => Number(butt.N) === tokenId);
-
-        if (index > -1) {
-          const params2 = {
-            TableName: getTableName("users"),
-            Key: { address: { S: from } },
-            UpdateExpression: `REMOVE #butts[${index}]`,
+            Key: { address: { S: to } },
+            UpdateExpression: "SET #butts = list_append(#butts, :newButt)",
             ExpressionAttributeNames: { "#butts": "butts" },
+            ExpressionAttributeValues: {
+              ":newButt": { L: [{ N: tokenId.toString() }] },
+            },
           };
-          await db.send(new UpdateItemCommand(params2));
+          await db.send(new UpdateItemCommand(updateParams));
+          logger.info(`Added token ${tokenId} to ${to}`);
+        } else {
+          logger.info(`Token ${tokenId} already exists for ${to}, skipping addition`);
         }
       }
+
       logger.info(`Updated user data for ${to}`);
     } else if (type === "mint") {
       logger.info(`Minted token ${tokenId} to ${to}`);
