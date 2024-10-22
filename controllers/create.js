@@ -1031,7 +1031,8 @@ export const createHalloweenImage = async (req, res) => {
       bottomNftLayerDir,
       [],
       [],
-      null
+      null,
+      "Accessories"
     );
 
     // Replace lion skin with zombie-green layers
@@ -1117,8 +1118,6 @@ export const createHalloweenImage = async (req, res) => {
   }
 };
 
-
-
 function prepareImagePaths(
   attributes,
   topNftLayerDir,
@@ -1198,7 +1197,7 @@ function prepareImagePaths(
           fileName = `${color}.png`;
           break;
         case "Headgear":
-          bottomDir = "Accessories-Safe";
+          bottomDir = includeSafeHat === "Accessories" ? "Accessories" : "Accessories-Safe";
           fileName = transformAccessories(attributes[attributeKey]);
           break;
         case "Bodygear":
