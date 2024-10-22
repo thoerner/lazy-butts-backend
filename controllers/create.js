@@ -1031,7 +1031,6 @@ export const createHalloweenImage = async (req, res) => {
       bottomNftLayerDir,
       [],
       [],
-      null,
       "Accessories"
     );
 
@@ -1197,6 +1196,7 @@ function prepareImagePaths(
           fileName = `${color}.png`;
           break;
         case "Headgear":
+          console.log("includeSafeHat", includeSafeHat);
           bottomDir = includeSafeHat === "Accessories" ? "Accessories" : "Accessories-Safe";
           fileName = transformAccessories(attributes[attributeKey]);
           break;
