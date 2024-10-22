@@ -10,6 +10,7 @@ import {
   createSpringImage,
   createCustomImage,
   createSummerVideo,
+  createHalloweenImage,
 } from "../controllers/create.js";
 
 const router = express.Router();
@@ -24,5 +25,6 @@ router.get("/rex/:tokenId", createRexRoar);
 router.get("/coco-pride/:tokenId", createCocoPride);
 router.get("/spring/:tokenId", createSpringImage);
 router.get("/summer/:tokenId", createSummerVideo);
+router.get("/halloween/:tokenId", createHalloweenImage);
 
 export default router;

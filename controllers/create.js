@@ -1005,6 +1005,120 @@ export const createSummerVideo = async (req, res) => {
   }
 };
 
+export const createHalloweenImage = async (req, res) => {
+  const { tokenId } = req.params;
+  console.log(`Creating Halloween image for token #${tokenId}`);
+
+  try {
+    // Fetch and parse metadata
+    const metadata = await getNFTMetadata(tokenId, LAZY_LIONS_ADDRESS);
+    const parsedMetadata = JSON.parse(metadata.metadata);
+    const attributes = parsedMetadata.attributes.reduce((acc, attribute) => {
+      acc[attribute.trait_type] = attribute.value.trim();
+      return acc;
+    }, {});
+
+    // Define directories
+    const topNftLayerDir = path.join(nftLayersDir, "Top");
+    const bottomNftLayerDir = path.join(nftLayersDir, "Bottom");
+    const halloweenDir = path.join(layersDir, "Halloween2");
+    const size = 2000;
+
+    // Prepare image paths
+    let { topPaths, bottomPaths } = prepareImagePaths(
+      attributes,
+      topNftLayerDir,
+      bottomNftLayerDir,
+      [],
+      [],
+      null
+    );
+
+    // Replace lion skin with zombie-green layers
+    topPaths["Body"] = path.join(halloweenDir, "zombie-green-upper-2k.png");
+    bottomPaths["BottomBody"] = path.join(halloweenDir, "zombie-green-lower-2k.png");
+
+    // Read images
+    const topImageBuffers = await readImages(topPaths);
+    const bottomImageBuffers = await readImages(bottomPaths);
+
+    // Composite images (stack vertically)
+    const combinedImageBuffer = await compositeImages(
+      topImageBuffers,
+      bottomImageBuffers,
+      size
+    );
+
+    // Resize the combined image to fit within 2000x2000 pixels
+    const resizedCombinedImageBuffer = await sharp(combinedImageBuffer)
+      .resize(2000, 2000, {
+        fit: 'inside',
+      })
+      .toBuffer();
+
+    // Get metadata of resizedCombinedImageBuffer
+    const resizedCombinedImageMetadata = await sharp(resizedCombinedImageBuffer).metadata();
+    console.log('Resized Combined Image dimensions:', resizedCombinedImageMetadata.width, 'x', resizedCombinedImageMetadata.height);
+
+    // Extend the canvas to 2000x2000 pixels if necessary
+    const extendedCombinedImageBuffer = await sharp(resizedCombinedImageBuffer)
+      .extend({
+        top: Math.floor((2000 - resizedCombinedImageMetadata.height) / 2),
+        bottom: Math.ceil((2000 - resizedCombinedImageMetadata.height) / 2),
+        left: Math.floor((2000 - resizedCombinedImageMetadata.width) / 2),
+        right: Math.ceil((2000 - resizedCombinedImageMetadata.width) / 2),
+        background: { r: 0, g: 0, b: 0, alpha: 0 },
+      })
+      .toBuffer();
+
+    // Read and resize background and foreground images
+    const backgroundColor = attributes["Background"];
+    const pathToBackgroundImage = path.join(
+      halloweenDir,
+      "Background",
+      `${backgroundColor}.png`
+    );
+    const backgroundImageBuffer = await fsPromises.readFile(pathToBackgroundImage);
+    const resizedBackgroundImageBuffer = await sharp(backgroundImageBuffer)
+      .resize(size, size)
+      .toBuffer();
+
+    const pathToForegroundImage = path.join(halloweenDir, "foreground.png");
+    const foregroundImageBuffer = await fsPromises.readFile(pathToForegroundImage);
+    const resizedForegroundImageBuffer = await sharp(foregroundImageBuffer)
+      .resize(size, size)
+      .toBuffer();
+
+    // Get metadata of background and foreground images
+    const resizedBackgroundImageMetadata = await sharp(resizedBackgroundImageBuffer).metadata();
+    console.log('Resized Background Image dimensions:', resizedBackgroundImageMetadata.width, 'x', resizedBackgroundImageMetadata.height);
+
+    const resizedForegroundImageMetadata = await sharp(resizedForegroundImageBuffer).metadata();
+    console.log('Resized Foreground Image dimensions:', resizedForegroundImageMetadata.width, 'x', resizedForegroundImageMetadata.height);
+
+    // Composite the final image
+    const finalImageBuffer = await sharp(resizedBackgroundImageBuffer)
+      .composite([
+        { input: resizedForegroundImageBuffer, top: 0, left: 0 },
+        { input: extendedCombinedImageBuffer, top: 0, left: 0 },
+      ])
+      .png()
+      .toBuffer();
+
+    // Send image response
+    res.writeHead(200, {
+      "Content-Type": "image/png",
+      "Content-Length": finalImageBuffer.length,
+    });
+    res.end(finalImageBuffer);
+  } catch (error) {
+    console.error("An error occurred:", error);
+    res.status(400).json({ error: "Failed to create Halloween image" });
+  }
+};
+
+
+
 function prepareImagePaths(
   attributes,
   topNftLayerDir,
@@ -1196,6 +1310,8 @@ async function readImages(imagePaths) {
   for (const [trait, imagePath] of Object.entries(imagePaths)) {
     try {
       const buffer = await fsPromises.readFile(imagePath);
+      const metadata = await sharp(buffer).metadata();
+      console.log(`Read image for trait "${trait}" from "${imagePath}": ${metadata.width}x${metadata.height}`);
       imageBuffers[trait] = buffer;
     } catch (error) {
       console.error(`Error processing ${trait} at ${imagePath}:`, error);
@@ -1203,6 +1319,7 @@ async function readImages(imagePaths) {
   }
   return imageBuffers;
 }
+
 
 function transformBodygear(bodygearName) {
   const bodygearMappings = {
@@ -1263,3 +1380,4 @@ function transformAccessories(headgearName) {
   // Return the corresponding accessory, defaulting to "Nothing.png" if not found
   return accessoriesMappings[headgearName] || "Nothing.png";
 }
+
