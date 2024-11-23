@@ -1117,6 +1117,138 @@ export const createHalloweenImage = async (req, res) => {
   }
 };
 
+export const createThanksgivingImage = async (req, res) => {
+  const { tokenId } = req.params;
+  const { additional } = req.query;
+  console.log(`Creating Thanksgiving image for token #${tokenId} with additional lions: ${additional}`);
+
+  try {
+    // Define directories first
+    const topNftLayerDir = path.join(nftLayersDir, "Top");
+    const bottomNftLayerDir = path.join(nftLayersDir, "Bottom");
+    const thanksgivingDir = path.join(layersDir, "Thanksgiving");
+
+    // Parse additional lion IDs
+    const additionalLions = additional ? additional.split(',').slice(0, 4) : [];
+    console.log('Additional lions:', additionalLions);
+
+    // Function to generate a lion buffer
+    async function getLionBuffer(id) {
+      const metadata = await getNFTMetadata(id, LAZY_LIONS_ADDRESS);
+      const parsedMetadata = JSON.parse(metadata.metadata);
+      const attributes = parsedMetadata.attributes.reduce((acc, attribute) => {
+        acc[attribute.trait_type] = attribute.value.trim();
+        return acc;
+      }, {});
+
+      const { topPaths, bottomPaths } = prepareImagePaths(
+        attributes,
+        topNftLayerDir,
+        bottomNftLayerDir,
+        [],
+        [],
+        "Accessories"
+      );
+
+      const topImageBuffers = await readImages(topPaths);
+      const bottomImageBuffers = await readImages(bottomPaths);
+      const combinedBuffer = await compositeImages(
+        topImageBuffers,
+        bottomImageBuffers,
+        2000
+      );
+
+      return await sharp(combinedBuffer)
+        .resize(3000, 3000, {
+          fit: 'inside',
+        })
+        .extend({
+          top: 0,
+          bottom: 0,
+          left: 0,
+          right: 0,
+          background: { r: 0, g: 0, b: 0, alpha: 0 }
+        })
+        .toBuffer();
+    }
+
+    // Get all lion buffers in parallel
+    const [mainLionBuffer, ...additionalLionBuffers] = await Promise.all([
+      getLionBuffer(tokenId),
+      ...additionalLions.map(id => getLionBuffer(id))
+    ]);
+
+    // Read background and foreground images
+    const pathToBackgroundImage = path.join(layersDir, "Thanksgiving", "background.png");
+    const pathToForegroundImage = path.join(layersDir, "Thanksgiving", "foreground.png");
+
+    const backgroundImageBuffer = await fsPromises.readFile(pathToBackgroundImage);
+    const foregroundImageBuffer = await fsPromises.readFile(pathToForegroundImage);
+
+    // Get the background dimensions
+    const backgroundMetadata = await sharp(backgroundImageBuffer).metadata();
+    
+    // Calculate positions for all lions
+    const mainOffset = {
+      left: Math.floor((backgroundMetadata.width - 3000) / 2) + 750,
+      top: Math.floor(backgroundMetadata.height / 4)
+    };
+
+    // Position offsets for additional lions (relative to main lion)
+    const additionalOffsets = [
+      { left: -800, top: 0 },    // Inner left
+      { left: 800, top: 0 },     // Inner right
+      { left: -1600, top: 0 },   // Outer left
+      { left: 1600, top: 0 }     // Outer right
+    ];
+
+    // Create composite array with additional lions first
+    const compositeArray = [];
+
+    // Add additional lions to composite array first (they'll be rendered first/bottom)
+    additionalLionBuffers.forEach((buffer, index) => {
+      if (index < 4) { // Safety check
+        compositeArray.push({
+          input: buffer,
+          top: mainOffset.top + additionalOffsets[index].top,
+          left: mainOffset.left + additionalOffsets[index].left
+        });
+      }
+    });
+
+    // Add main lion after additional lions (it'll be rendered on top)
+    compositeArray.push({
+      input: mainLionBuffer,
+      top: mainOffset.top,
+      left: mainOffset.left
+    });
+
+    // Add foreground last (always on top)
+    compositeArray.push({
+      input: foregroundImageBuffer,
+      top: 0,
+      left: 0
+    });
+
+    // Create final composite
+    const finalImageBuffer = await sharp(backgroundImageBuffer)
+      .composite(compositeArray)
+      .png()
+      .toBuffer();
+
+    // Send image response
+    res.writeHead(200, {
+      "Content-Type": "image/png",
+      "Content-Length": finalImageBuffer.length,
+    });
+    res.end(finalImageBuffer);
+
+  } catch (error) {
+    console.error("An error occurred:", error);
+    res.status(400).json({ error: "Failed to create Thanksgiving image" });
+  }
+};
+
 function prepareImagePaths(
   attributes,
   topNftLayerDir,

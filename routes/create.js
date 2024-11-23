@@ -11,6 +11,7 @@ import {
   createCustomImage,
   createSummerVideo,
   createHalloweenImage,
+  createThanksgivingImage,
 } from "../controllers/create.js";
 
 const router = express.Router();
@@ -26,5 +27,6 @@ router.get("/coco-pride/:tokenId", createCocoPride);
 router.get("/spring/:tokenId", createSpringImage);
 router.get("/summer/:tokenId", createSummerVideo);
 router.get("/halloween/:tokenId", createHalloweenImage);
+router.get("/thanksgiving/:tokenId", createThanksgivingImage);
 
 export default router;
