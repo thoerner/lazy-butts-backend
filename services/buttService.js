@@ -5,7 +5,7 @@ import db, {
   UpdateItemCommand,
 } from "./dbService.js";
 import { Contract, ZeroAddress } from "ethers";
-import LazyButtsAbi from "../contracts/LazyButts.json" assert { type: "json" };
+import LazyButtsAbi from "../contracts/LazyButts.json" with { type: "json" };
 import logger from "./logger.js";
 
 const BUTTS_CONTRACT_ADDRESS =

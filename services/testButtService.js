@@ -7,7 +7,7 @@ import {
 import { PutObjectAclCommand } from "./s3Service.js";
 import axios from "axios";
 import { Contract, ZeroAddress } from "ethers";
-import LazyButtsAbi from "../contracts/LazyButts.json" assert { type: "json" };
+import LazyButtsAbi from "../contracts/LazyButts.json" with { type: "json" };
 
 // Mock versions of your AWS services for testing
 const db = {

@@ -5,7 +5,7 @@ import path from "path";
 import ffmpeg from "fluent-ffmpeg";
 import { promisify } from "util";
 import { fileURLToPath } from "url";
-import { downloadFile } from "../utils/ipfsUtils.js";
+import { downloadFile, downloadFileFromPinata } from "../utils/ipfsUtils.js";
 import s3, { GetObjectCommand } from "../services/s3Service.js";
 import { getTokenMetadata } from "../utils/cubMetadata.js";
 import { getNFTMetadata } from "../utils/nftMetadata.js";
@@ -25,6 +25,8 @@ const writeFile = promisify(fs.writeFile);
 const unlink = promisify(fs.unlink);
 
 ffmpeg.setFfmpegPath('/usr/bin/ffmpeg');
+
+const LAZY_CUBS_ADDRESS = "0xE6A9826E3B6638d01dE95B55690bd4EE7EfF9441";
 
 async function resizeImage(imageBuffer, width, height) {
   return await sharp(imageBuffer).resize(width, height).png().toBuffer();
@@ -390,12 +392,14 @@ export const createGm = async (req, res) => {
   let metadata;
 
   try {
-    metadata = await getNFTMetadata(tokenId, LAZY_LIONS_ADDRESS);
+    metadata = await getNFTMetadata(tokenId, LAZY_LIONS_ADDRESS, true);
   } catch (error) {
     console.error("An error occurred:", error);
     return res
       .status(400)
       .json({ error: "Metadata for this token is unavailable" });
+  } finally {
+    console.log("metadata:", metadata);
   }
 
   const parsedMetadata = JSON.parse(metadata.metadata);
@@ -412,10 +416,12 @@ export const createGm = async (req, res) => {
 
   let imageCid = parsedMetadata.image.split("ipfs://")[1];
 
+  console.log("imageCid:", imageCid);
+
   const size = 2000;
 
-  // download image
-  const imageBuffer = await downloadFile(imageCid);
+  // download image from Pinata gateway
+  const imageBuffer = await downloadFileFromPinata(imageCid);
   const baseLayerBuffer = await resizeImage(imageBuffer, size, size);
 
   const pathToGmImage = path.join(layersDir, "GM", `${body}.png`);
@@ -445,11 +451,13 @@ export const createCubGm = async (req, res) => {
   let metadata;
 
   try {
-    let response = await getTokenMetadata(tokenId);
-    if (!response || !response.metadata) {
-      throw new Error("Metadata not found for token ID " + tokenId);
+    // Use Pinata gateway for metadata, with correct Cubs address
+    metadata = await getNFTMetadata(tokenId, LAZY_CUBS_ADDRESS, true);
+    if (typeof metadata.metadata === "string") {
+      metadata = JSON.parse(metadata.metadata);
+    } else {
+      metadata = metadata.metadata;
     }
-    metadata = response.metadata;
   } catch (error) {
     console.error("An error occurred:", error.message);
     return res.status(404).json({
@@ -496,8 +504,8 @@ export const createCubGm = async (req, res) => {
 
   const size = 2000;
 
-  // download image
-  const imageBuffer = await downloadFile(imageCid);
+  // download image from Pinata gateway
+  const imageBuffer = await downloadFileFromPinata(imageCid);
   const baseLayerBuffer = await resizeImage(imageBuffer, size, size);
 
   let gmLayerPath;

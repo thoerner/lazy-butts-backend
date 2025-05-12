@@ -1,10 +1,10 @@
 import axios from "axios";
 import { Contract } from "ethers";
-import erc721Abi from "../contracts/LazyCubs.json" assert { type: "json" };
+import erc721Abi from "../contracts/LazyCubs.json" with { type: "json" };
 import { ethProvider } from "../services/ethService.js";
-import { downloadJsonFile } from "../utils/ipfsUtils.js";
+import { downloadJsonFile, downloadJsonFileFromPinata } from "../utils/ipfsUtils.js";
 
-export async function getNFTMetadata(tokenId, contractAddress) {
+export async function getNFTMetadata(tokenId, contractAddress, usePinataGateway = false) {
   const contract = new Contract(contractAddress, erc721Abi, ethProvider);
 
   try {
@@ -17,7 +17,9 @@ export async function getNFTMetadata(tokenId, contractAddress) {
     // Fetch the metadata from the IPFS hash
     if (isIpfs) {
       const ipfsHash = tokenURI.replace("ipfs://", "");
-      const metadata = await downloadJsonFile(ipfsHash);
+      const metadata = usePinataGateway
+        ? await downloadJsonFileFromPinata(ipfsHash)
+        : await downloadJsonFile(ipfsHash);
       return {
         tokenId: tokenId.toString(),
         metadata: metadata,

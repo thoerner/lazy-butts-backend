@@ -1,6 +1,6 @@
 import axios from "axios";
 import { Contract } from "ethers";
-import lazyCubsAbi from "../contracts/LazyCubs.json" assert { type: "json" };
+import lazyCubsAbi from "../contracts/LazyCubs.json" with { type: "json" };
 import { ethProvider } from "../services/ethService.js";
 
 const contractAddress = "0xE6A9826E3B6638d01dE95B55690bd4EE7EfF9441";

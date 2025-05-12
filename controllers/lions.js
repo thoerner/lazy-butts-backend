@@ -1,7 +1,7 @@
 import { ethers } from 'ethers'
 import { validationResult } from 'express-validator'
 import ethProvider from '../services/ethService.js'
-import LazyLions from '../contracts/LazyLions.json' assert { type: "json" }
+import LazyLions from '../contracts/LazyLions.json' with { type: "json" }
 import { getTokenData } from "../utils/cubMetadata.js"
 
 const LION_CONTRACT_ADDRESS = process.env.ENV === 'dev' ? process.env.LION_CONTRACT_ADDRESS_TEST : process.env.LION_CONTRACT_ADDRESS

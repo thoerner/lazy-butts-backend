@@ -3,10 +3,10 @@ import { verifyMessage, Contract } from 'ethers'
 import { verifySessionAuth } from '../utils/authTools.js'
 import redis from '../services/redisService.js'
 import dotenv from 'dotenv'
-import ALLOW_LIST from '../utils/addresses.json' assert { type: "json" }
+import ALLOW_LIST from '../utils/addresses.json' with { type: "json" }
 import { makeTree, getRoot, getProof } from '../utils/merkleTools.js';
 import provider from '../services/ethService.js'
-import LazyButtsAbi from '../contracts/LazyButts.json' assert { type: "json" }
+import LazyButtsAbi from '../contracts/LazyButts.json' with { type: "json" }
 dotenv.config()
 
 const SESSION_EXPIRY_TIME = 86400 // 24 hours
